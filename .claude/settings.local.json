@@ -19,7 +19,15 @@
       "Bash(npx nodemon:*)",
       "Bash(ls -la FMGE_Set_2*)",
       "Bash(npx kill-port:*)",
-      "Bash(taskkill //F //IM node.exe)"
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -X POST http://localhost:3000/api/pyq/extract -F 'pdfs=@d:/fmge-question-paper/FMGE July 2025 Part 1.pdf' -o /tmp/pyq_result.json)",
+      "Bash(curl -s -X POST http://localhost:3000/api/pyq/extract -F 'pdfs=@d:/fmge-question-paper/FMGE July 2025 Part 1.pdf' -o C:/Users/shoai/fmack/temp/pyq_test.json)",
+      "WebFetch(domain:arxiv.org)",
+      "Bash(curl -s \"https://huggingface.co/api/datasets/openlifescienceai/medmcqa/parquet/default/train\")",
+      "Bash(curl -s \"https://huggingface.co/api/datasets/openlifescienceai/medmcqa/parquet/default/validation\")",
+      "Bash(curl -s \"https://huggingface.co/api/datasets/openlifescienceai/medmcqa/parquet/default/test\")",
+      "Bash(curl -s \"http://localhost:3000/api/review/questions?page=1&limit=3\")"
     ]
   }
 }

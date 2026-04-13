@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Batch Ingestion — FMGE Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+
+.topbar{background:#0f3460;color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:15pt;font-weight:700}
+.topbar-links{display:flex;gap:18px}
+.topbar a{color:#48cae4;text-decoration:none;font-size:10pt}
+
+.container{max-width:1200px;margin:0 auto;padding:24px 20px}
+
+.card{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.card h2{font-size:12pt;font-weight:700;color:#0f3460;margin-bottom:18px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:#e9ecef;padding:4px;border-radius:10px;width:fit-content}
+.tab-btn{padding:8px 22px;border:none;border-radius:7px;font-size:10pt;font-weight:600;cursor:pointer;background:transparent;color:#6c757d;transition:.15s}
+.tab-btn.active{background:#fff;color:#0f3460;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:7px;border:none;cursor:pointer;font-size:10.5pt;font-weight:600;transition:.2s}
+.btn-primary{background:#0f3460;color:#fff}.btn-primary:hover:not(:disabled){background:#1a4a7a}
+.btn-success{background:#28a745;color:#fff}.btn-success:hover:not(:disabled){background:#218838}
+.btn-outline{background:#fff;color:#0f3460;border:2px solid #0f3460}.btn-outline:hover{background:#f0f4ff}
+.btn-sm{padding:6px 14px;font-size:9pt}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Drop zones */
+.drop-zone{border:2.5px dashed #c8d8f0;border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;transition:.2s;background:#f8fbff;position:relative;min-height:120px}
+.drop-zone:hover,.drop-zone.drag{border-color:#0f3460;background:#eef3fc}
+.drop-zone.has-files{border-color:#28a745;background:#f0fff4;border-style:solid}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-zone .dz-icon{font-size:28px;margin-bottom:6px}
+.drop-zone .dz-label{font-size:10.5pt;font-weight:600;color:#0f3460}
+.drop-zone .dz-sub{font-size:9pt;color:#6c757d;margin-top:4px}
+.drop-zone.has-files .dz-label{color:#155724}
+kbd{display:inline-block;padding:1px 5px;border:1.5px solid currentColor;border-radius:3px;font-size:8pt;font-family:monospace}
+
+/* Screenshot mode layout */
+.ss-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:16px}
+.ss-col-label{font-size:9.5pt;font-weight:700;color:#0f3460;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+
+/* File thumbnails strip */
+.thumb-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;max-height:180px;overflow-y:auto}
+.thumb-item{position:relative;width:80px;flex-shrink:0}
+.thumb-item img{width:80px;height:100px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6}
+.thumb-item .thumb-num{position:absolute;top:3px;left:3px;background:rgba(15,52,96,.85);color:#fff;font-size:8pt;font-weight:700;padding:2px 6px;border-radius:4px}
+.thumb-item .thumb-del{position:absolute;top:3px;right:3px;background:rgba(220,53,69,.9);color:#fff;border:none;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10pt;line-height:1;display:flex;align-items:center;justify-content:center}
+
+/* Pairing preview */
+.pairs-preview{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:16px}
+.pair-row{display:flex;align-items:center;gap:10px;background:#f8fbff;border:1px solid #e3eaf5;border-radius:7px;padding:8px 12px;font-size:9.5pt}
+.pair-badge{padding:2px 8px;border-radius:5px;font-size:8.5pt;font-weight:700}
+.pair-q{background:#dbeafe;color:#1e3a8a}
+.pair-a{background:#d4edda;color:#155724}
+.pair-arrow{color:#adb5bd}
+.pair-no-a{color:#856404;font-style:italic}
+
+/* PDF mode */
+.pdf-controls{display:grid;grid-template-columns:1fr 120px 120px auto;gap:10px;align-items:end;margin-bottom:16px}
+.field-group label{font-size:8.5pt;font-weight:700;color:#6c757d;text-transform:uppercase;display:block;margin-bottom:4px}
+.field-input{width:100%;padding:8px 12px;border:1.5px solid #dee2e6;border-radius:7px;font-size:10pt;font-family:inherit;transition:.2s;background:#fafbfc}
+.field-input:focus{outline:none;border-color:#0f3460;background:#fff}
+
+/* Thumbnail grid */
+.thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px;margin-bottom:16px;max-height:420px;overflow-y:auto}
+.grid-thumb{position:relative;cursor:pointer;border-radius:8px;overflow:hidden;border:2.5px solid transparent;transition:.15s}
+.grid-thumb:hover{border-color:#0f3460}
+.grid-thumb.selected-q{border-color:#1d4ed8;background:#dbeafe}
+.grid-thumb.selected-a{border-color:#166534;background:#d4edda}
+.grid-thumb img{width:100%;height:130px;object-fit:cover;display:block}
+.grid-thumb .gt-num{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:8pt;font-weight:700;text-align:center;padding:3px}
+.grid-thumb .gt-badge{position:absolute;top:4px;right:4px;padding:2px 7px;border-radius:4px;font-size:8pt;font-weight:700}
+.gt-q{background:#1d4ed8;color:#fff}
+.gt-a{background:#166534;color:#fff}
+
+.pdf-legend{display:flex;gap:12px;align-items:center;font-size:9pt;margin-bottom:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:12px;height:12px;border-radius:3px}
+
+/* Pairs table for PDF mode */
+.pdf-pairs{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:220px;overflow-y:auto}
+.pdf-pair-row{display:grid;grid-template-columns:auto 1fr auto 1fr auto;gap:8px;align-items:center;background:#f8fbff;border:1px solid #e3eaf5;border-radius:7px;padding:7px 12px;font-size:9.5pt}
+
+/* Progress */
+.progress-section{display:none;margin-bottom:20px}
+.progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.progress-bar{height:10px;background:#e9ecef;border-radius:5px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#0f3460,#48cae4);transition:width .4s;border-radius:5px}
+.progress-log{max-height:120px;overflow-y:auto;background:#f8fbff;border:1px solid #e3eaf5;border-radius:8px;padding:10px;margin-top:10px;font-size:9pt;font-family:monospace}
+.log-line{padding:1px 0;color:#495057}
+.log-line.success{color:#155724}
+.log-line.error{color:#721c24}
+
+/* Alert */
+.alert{padding:12px 16px;border-radius:8px;font-size:10pt;margin-bottom:16px;display:none}
+.alert-success{background:#d4edda;border:1px solid #c3e6cb;color:#155724}
+.alert-error{background:#f8d7da;border:1px solid #f5c6cb;color:#721c24}
+.alert-info{background:#d1ecf1;border:1px solid #bee5eb;color:#0c5460}
+
+/* Review panel */
+.review-panel{display:none}
+.review-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:9pt;font-weight:600}
+.badge-blue{background:#dbeafe;color:#1e3a8a}
+.badge-green{background:#d4edda;color:#155724}
+.badge-orange{background:#fff3cd;color:#856404}
+
+/* Compact question table */
+.q-table{width:100%;border-collapse:collapse;font-size:9.5pt}
+.q-table th{background:#0f3460;color:#fff;padding:8px 12px;text-align:left;font-weight:600;font-size:9pt;white-space:nowrap}
+.q-table td{padding:8px 12px;border-bottom:1px solid #e9ecef;vertical-align:middle}
+.q-table tr:hover td{background:#f8fbff}
+.q-table tr.approved td{background:#f0fff4}
+.q-table tr.rejected td{background:#fff5f5;opacity:.7}
+.stem-cell{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:#0f3460}
+.stem-cell:hover{text-decoration:underline}
+.correct-badge{display:inline-block;width:22px;height:22px;border-radius:50%;background:#0f3460;color:#fff;text-align:center;line-height:22px;font-weight:700;font-size:9pt}
+.img-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ffc107}
+.expl-count{color:#6c757d;font-size:8.5pt}
+.row-status{display:flex;gap:4px}
+.mini-btn{padding:2px 8px;border-radius:4px;border:1px solid;font-size:8.5pt;font-weight:600;cursor:pointer;transition:.1s}
+.mini-approve{border-color:#28a745;color:#28a745;background:#fff}.mini-approve:hover,.mini-approve.on{background:#28a745;color:#fff}
+.mini-reject{border-color:#dc3545;color:#dc3545;background:#fff}.mini-reject:hover,.mini-reject.on{background:#dc3545;color:#fff}
+
+/* Save bar */
+.save-bar{position:sticky;bottom:0;background:#fff;border-top:2px solid #dee2e6;padding:14px 28px;display:none;align-items:center;gap:12px;box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:100}
+.save-bar .save-info{flex:1;font-size:10pt;color:#495057}
+.save-bar .save-info strong{color:#0f3460}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:min(700px,95vw);max-height:85vh;overflow-y:auto;position:relative}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:18pt;cursor:pointer;color:#6c757d}
+.modal h3{font-size:12pt;font-weight:700;color:#0f3460;margin-bottom:16px;padding-right:30px}
+.mfield-label{font-size:8.5pt;font-weight:700;color:#6c757d;text-transform:uppercase;margin-bottom:4px;display:block}
+.mfield{width:100%;padding:8px 12px;border:1.5px solid #dee2e6;border-radius:7px;font-size:10pt;font-family:inherit;margin-bottom:12px;transition:.2s}
+.mfield:focus{outline:none;border-color:#0f3460}
+.expl-modal-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.expl-modal-row{display:flex;gap:8px;align-items:flex-start}
+.expl-modal-row::before{content:'•';color:#0f3460;font-size:14pt;line-height:1.5;flex-shrink:0}
+.expl-modal-row textarea{flex:1;padding:7px 10px;border:1.5px solid #dee2e6;border-radius:6px;font-size:10pt;font-family:inherit;resize:vertical;min-height:40px}
+.expl-modal-row textarea:focus{outline:none;border-color:#0f3460}
+.expl-del-btn{background:none;border:none;color:#adb5bd;font-size:14pt;cursor:pointer;padding:4px;margin-top:4px}
+.expl-del-btn:hover{color:#dc3545}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Batch Ingestion</h1>
+    <div style="font-size:9pt;color:#adb5bd;margin-top:2px">Process multiple question + answer page pairs at once</div>
+  </div>
+  <div class="topbar-links">
+    <a href="/ingest.html">Single Pair</a>
+    <a href="/">Generator</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="alert" id="alert"></div>
+
+  <!-- ── Mode tabs ── -->
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('screenshots')">📷 From Screenshots</button>
+      <button class="tab-btn" onclick="switchTab('pdf')">📄 From PDF</button>
+    </div>
+
+    <!-- ── SCREENSHOTS TAB ── -->
+    <div class="tab-pane active" id="tab-screenshots">
+      <div class="ss-grid">
+        <div>
+          <div class="ss-col-label">Question Pages</div>
+          <div class="drop-zone" id="dropQ"
+            onclick="document.getElementById('filesQ').click()"
+            ondragover="dzDrag(event,'Q',true)" ondragleave="dzDrag(event,'Q',false)"
+            ondrop="dzDrop(event,'Q')">
+            <input type="file" id="filesQ" accept=".jpg,.jpeg,.png,.webp" multiple
+              onchange="addFiles('Q',this)" onclick="event.stopPropagation()">
+            <div class="dz-icon">📷</div>
+            <div class="dz-label">Question Pages</div>
+            <div class="dz-sub">Click or drop — multiple files • <kbd>Ctrl+V</kbd> pastes one</div>
+          </div>
+          <div class="thumb-strip" id="thumbsQ"></div>
+        </div>
+        <div>
+          <div class="ss-col-label">Answer / Explanation Pages</div>
+          <div class="drop-zone" id="dropA"
+            onclick="document.getElementById('filesA').click()"
+            ondragover="dzDrag(event,'A',true)" ondragleave="dzDrag(event,'A',false)"
+            ondrop="dzDrop(event,'A')">
+            <input type="file" id="filesA" accept=".jpg,.jpeg,.png,.webp" multiple
+              onchange="addFiles('A',this)" onclick="event.stopPropagation()">
+            <div class="dz-icon">📋</div>
+            <div class="dz-label">Answer Pages</div>
+            <div class="dz-sub">Click or drop — must match order of question pages</div>
+          </div>
+          <div class="thumb-strip" id="thumbsA"></div>
+        </div>
+      </div>
+
+      <div id="pairsPreview" style="display:none">
+        <div style="font-size:9.5pt;font-weight:700;color:#0f3460;margin-bottom:8px">Pairs detected</div>
+        <div class="pairs-preview" id="pairsList"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="ssProcessBtn" onclick="processScreenshots()" disabled>
+          Process All Pairs
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="clearScreenshots()">Clear</button>
+        <span style="font-size:9pt;color:#6c757d" id="ssNote">Upload question pages to start</span>
+      </div>
+    </div>
+
+    <!-- ── PDF TAB ── -->
+    <div class="tab-pane" id="tab-pdf">
+
+      <div style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:9.5pt;color:#1e3a8a">
+        <strong>How it works:</strong> Crop your question pages into one PDF and answer pages into another PDF (use any PDF editor or browser print-to-PDF).
+        Upload both below — the system pairs them page-by-page automatically.
+        <br>Example: Questions PDF has 5 pages → Answers PDF has 5 pages → 5 pairs extracted.
+      </div>
+
+      <div class="ss-grid">
+        <!-- Questions PDF -->
+        <div>
+          <div class="ss-col-label">Questions PDF</div>
+          <div class="drop-zone" id="dropQPdf"
+            onclick="document.getElementById('fileQPdf').click()"
+            ondragover="dzDrag(event,'QPdf',true)" ondragleave="dzDrag(event,'QPdf',false)"
+            ondrop="dzDropPdf(event,'Q')">
+            <input type="file" id="fileQPdf" accept=".pdf" onchange="pdfPicked('Q',this)" onclick="event.stopPropagation()">
+            <div class="dz-icon">📄</div>
+            <div class="dz-label">Questions PDF</div>
+            <div class="dz-sub">Cropped PDF with question pages only</div>
+            <div style="font-size:9pt;color:#155724;font-weight:600;margin-top:6px" id="qPdfName"></div>
+          </div>
+          <div id="qPdfInfo" style="display:none;margin-top:8px;background:#f0fff4;border:1px solid #c3e6cb;border-radius:7px;padding:10px 14px;font-size:9.5pt;color:#155724">
+            <strong id="qPdfPages"></strong>
+          </div>
+        </div>
+
+        <!-- Answers PDF -->
+        <div>
+          <div class="ss-col-label">Answers / Explanations PDF</div>
+          <div class="drop-zone" id="dropAPdf"
+            onclick="document.getElementById('fileAPdf').click()"
+            ondragover="dzDrag(event,'APdf',true)" ondragleave="dzDrag(event,'APdf',false)"
+            ondrop="dzDropPdf(event,'A')">
+            <input type="file" id="fileAPdf" accept=".pdf" onchange="pdfPicked('A',this)" onclick="event.stopPropagation()">
+            <div class="dz-icon">📋</div>
+            <div class="dz-label">Answers PDF</div>
+            <div class="dz-sub">Same page count as questions PDF, same order</div>
+            <div style="font-size:9pt;color:#155724;font-weight:600;margin-top:6px" id="aPdfName"></div>
+          </div>
+          <div id="aPdfInfo" style="display:none;margin-top:8px;background:#f0fff4;border:1px solid #c3e6cb;border-radius:7px;padding:10px 14px;font-size:9.5pt;color:#155724">
+            <strong id="aPdfPages"></strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pair summary -->
+      <div id="dualPdfSummary" style="display:none;background:#f8fbff;border:1.5px solid #c8d8f0;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:10pt">
+        <div id="dualPdfSummaryText"></div>
+        <div id="dualPdfMismatch" style="display:none;color:#856404;margin-top:6px;font-size:9.5pt">
+          ⚠ Page counts differ — extra pages in the longer PDF will have no matching pair and be processed as question-only.
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-primary" id="dualPdfBtn" onclick="processDualPdf()" disabled>
+          Render &amp; Process
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="clearDualPdf()">Clear</button>
+        <span style="font-size:9pt;color:#6c757d" id="dualPdfNote">Upload the questions PDF to start</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Progress ── -->
+  <div class="progress-section" id="progressSection">
+    <div class="card" style="padding:20px">
+      <div class="progress-header">
+        <strong id="progressLabel" style="font-size:10.5pt;color:#0f3460">Processing...</strong>
+        <span id="progressCount" style="font-size:9.5pt;color:#6c757d"></span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="progress-log" id="progressLog"></div>
+    </div>
+  </div>
+
+  <!-- ── Review panel ── -->
+  <div class="review-panel" id="reviewPanel">
+    <div class="card">
+      <div class="review-header">
+        <h2>Review Extracted Questions</h2>
+        <span class="badge badge-blue" id="totalBadge">0</span>
+        <span class="badge badge-green" id="approvedBadge">0 approved</span>
+        <span class="badge badge-orange" id="flaggedBadge">0 flagged</span>
+        <button class="btn btn-outline btn-sm" onclick="approveAll()">Approve All</button>
+        <button class="btn btn-outline btn-sm" onclick="rejectFlagged()">Reject Flagged</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="q-table" id="qTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Question stem</th>
+              <th>Correct</th>
+              <th>Subject</th>
+              <th>Expl.</th>
+              <th>Image</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="qTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save bar -->
+<div class="save-bar" id="saveBar">
+  <div class="save-info"><strong id="saveCount">0</strong> questions approved and ready to save</div>
+  <button class="btn btn-outline btn-sm" onclick="downloadJSON()">Download JSON</button>
+  <button class="btn btn-success" id="saveBtn" onclick="saveAll()">Save to Question Bank</button>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalBox">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h3 id="modalTitle">Edit Question</h3>
+    <label class="mfield-label">Question stem</label>
+    <textarea class="mfield" id="mStem" rows="3"></textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div><label class="mfield-label">Option A</label><input class="mfield" id="mA" type="text"></div>
+      <div><label class="mfield-label">Option B</label><input class="mfield" id="mB" type="text"></div>
+      <div><label class="mfield-label">Option C</label><input class="mfield" id="mC" type="text"></div>
+      <div><label class="mfield-label">Option D</label><input class="mfield" id="mD" type="text"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label class="mfield-label">Correct answer</label>
+        <select class="mfield" id="mCorrect">
+          <option value="a">A</option><option value="b">B</option>
+          <option value="c">C</option><option value="d">D</option>
+        </select>
+      </div>
+      <div>
+        <label class="mfield-label">Subject</label>
+        <select class="mfield" id="mSubject">
+          <option value="anatomy">Anatomy</option><option value="physiology">Physiology</option>
+          <option value="biochemistry">Biochemistry</option><option value="pathology">Pathology</option>
+          <option value="pharmacology">Pharmacology</option><option value="medicine">Medicine</option>
+          <option value="surgery">Surgery</option><option value="obgy">OB/GY</option>
+          <option value="paediatrics">Paediatrics</option><option value="psychiatry">Psychiatry</option>
+          <option value="ophthalmology">Ophthalmology</option><option value="ent">ENT</option>
+          <option value="dermatology">Dermatology</option><option value="radiology">Radiology</option>
+          <option value="community_medicine">Community Medicine</option>
+        </select>
+      </div>
+      <div>
+        <label class="mfield-label">Difficulty</label>
+        <select class="mfield" id="mDiff">
+          <option value="easy">Easy</option><option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+    </div>
+    <label class="mfield-label">Explanation bullet points</label>
+    <div class="expl-modal-list" id="mExplList"></div>
+    <button class="btn btn-outline btn-sm" onclick="addModalExpl()" style="margin-bottom:12px">+ Add point</button>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveModal()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import * as pdfjsLib from '/pdfjs/pdf.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
+  window.pdfjsLib = pdfjsLib;
+</script>
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let qFiles = [];   // File objects for Q pages
+let aFiles = [];   // File objects for A pages
+let allQuestions = [];      // accumulated from all pairs
+let statuses     = {};      // idx → 'approved'|'rejected'|'flagged'
+let pdfJobId     = null;
+let pdfPairs     = [];      // [{qPage, aPage}]
+let pdfPageCount = 0;
+let pdfPageTags  = {};      // pageNum → 'q'|'a'|null
+let editingIdx   = null;
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ['screenshots','pdf'][i] === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ── Drag/drop helpers ─────────────────────────────────────────────────────────
+function dzDrag(e, which, on) {
+  e.preventDefault();
+  document.getElementById(`drop${which}`).classList.toggle('drag', on);
+}
+function dzDrop(e, which) {
+  e.preventDefault();
+  document.getElementById(`drop${which}`).classList.remove('drag');
+  if (which === 'Pdf') { handlePdfDrop(e.dataTransfer.files[0]); return; }
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if (which === 'Q') { qFiles.push(...files); renderThumbs('Q'); updatePairsPreview(); }
+  if (which === 'A') { aFiles.push(...files); renderThumbs('A'); updatePairsPreview(); }
+}
+
+// ── Clipboard paste ───────────────────────────────────────────────────────────
+document.addEventListener('paste', e => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  const img = Array.from(e.clipboardData?.items || []).find(i => i.type.startsWith('image/'));
+  if (!img) return;
+  e.preventDefault();
+  const file = img.getAsFile();
+  const named = new File([file], `screenshot_${Date.now()}.png`, { type: file.type });
+  // Paste into Q if it has fewer images, else A
+  if (qFiles.length <= aFiles.length) {
+    qFiles.push(named); renderThumbs('Q');
+  } else {
+    aFiles.push(named); renderThumbs('A');
+  }
+  updatePairsPreview();
+});
+
+// ── Screenshot mode ───────────────────────────────────────────────────────────
+function addFiles(which, input) {
+  const files = Array.from(input.files);
+  if (which === 'Q') { qFiles.push(...files); renderThumbs('Q'); }
+  if (which === 'A') { aFiles.push(...files); renderThumbs('A'); }
+  input.value = '';
+  updatePairsPreview();
+}
+
+function renderThumbs(which) {
+  const arr  = which === 'Q' ? qFiles : aFiles;
+  const strip = document.getElementById(`thumbs${which}`);
+  const drop  = document.getElementById(`drop${which}`);
+  strip.innerHTML = '';
+  arr.forEach((f, i) => {
+    const url = URL.createObjectURL(f);
+    const div = document.createElement('div');
+    div.className = 'thumb-item';
+    div.innerHTML = `<img src="${url}"><div class="thumb-num">${i+1}</div>
+      <button class="thumb-del" onclick="removeFile('${which}',${i})">×</button>`;
+    strip.appendChild(div);
+  });
+  drop.classList.toggle('has-files', arr.length > 0);
+}
+
+function removeFile(which, idx) {
+  if (which === 'Q') qFiles.splice(idx, 1);
+  if (which === 'A') aFiles.splice(idx, 1);
+  renderThumbs(which);
+  updatePairsPreview();
+}
+
+function updatePairsPreview() {
+  const list = document.getElementById('pairsList');
+  const wrap = document.getElementById('pairsPreview');
+  const btn  = document.getElementById('ssProcessBtn');
+  const note = document.getElementById('ssNote');
+  if (!qFiles.length) { wrap.style.display = 'none'; btn.disabled = true; note.textContent = 'Upload question pages to start'; return; }
+  wrap.style.display = 'block';
+  list.innerHTML = '';
+  const n = Math.max(qFiles.length, aFiles.length);
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement('div');
+    row.className = 'pair-row';
+    row.innerHTML = `
+      <span class="pair-badge pair-q">Q${i+1}</span>
+      <span>${qFiles[i]?.name || '<missing>'}</span>
+      <span class="pair-arrow">↔</span>
+      <span class="pair-badge pair-a">A${i+1}</span>
+      ${aFiles[i] ? `<span>${aFiles[i].name}</span>` : '<span class="pair-no-a">No answer page — will extract questions only</span>'}`;
+    list.appendChild(row);
+  }
+  btn.disabled = false;
+  note.textContent = `${qFiles.length} question page${qFiles.length>1?'s':''} · ${aFiles.length} answer page${aFiles.length!==1?'s':''}`;
+}
+
+function clearScreenshots() {
+  qFiles = []; aFiles = [];
+  ['Q','A'].forEach(w => { renderThumbs(w); document.getElementById(`drop${w}`).classList.remove('has-files'); });
+  document.getElementById('pairsPreview').style.display = 'none';
+  document.getElementById('ssProcessBtn').disabled = true;
+  document.getElementById('ssNote').textContent = 'Upload question pages to start';
+}
+
+async function processScreenshots() {
+  if (!qFiles.length) return;
+  const fd = new FormData();
+  qFiles.forEach(f => fd.append('qPages', f));
+  aFiles.forEach(f => fd.append('aPages', f));
+  startProgress(qFiles.length);
+  document.getElementById('ssProcessBtn').disabled = true;
+  await streamProcess('/api/batch/process-pairs', fd, 'multipart');
+  document.getElementById('ssProcessBtn').disabled = false;
+}
+
+// ── Dual PDF mode ─────────────────────────────────────────────────────────────
+let qPdfPageCount = 0;
+let aPdfPageCount = 0;
+
+function dzDropPdf(e, which) {
+  e.preventDefault();
+  document.getElementById(`drop${which}Pdf`).classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (!file || file.type !== 'application/pdf') return showAlert('PDF files only', 'error');
+  const dt = new DataTransfer(); dt.items.add(file);
+  const input = document.getElementById(`file${which}Pdf`);
+  input.files = dt.files;
+  pdfPicked(which, input);
+}
+
+async function pdfPicked(which, input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById(`${which.toLowerCase()}PdfName`).textContent = file.name;
+  document.getElementById(`drop${which}Pdf`).classList.add('has-files');
+
+  // Count pages using PDF.js in browser (quick, no server call)
+  try {
+    const count = await countPdfPages(file);
+    if (which === 'Q') { qPdfPageCount = count; document.getElementById('qPdfInfo').style.display = 'block'; document.getElementById('qPdfPages').textContent = `${count} pages detected`; }
+    if (which === 'A') { aPdfPageCount = count; document.getElementById('aPdfInfo').style.display = 'block'; document.getElementById('aPdfPages').textContent = `${count} pages detected`; }
+    updateDualPdfSummary();
+  } catch(e) {
+    // Page count not critical — just proceed
+    updateDualPdfSummary();
+  }
+}
+
+async function countPdfPages(file) {
+  // Use browser's built-in PDF.js from our server
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const arr = new Uint8Array(e.target.result);
+        const { pdfjsLib } = window;
+        if (!pdfjsLib) { resolve(0); return; }
+        const pdf = await pdfjsLib.getDocument({ data: arr }).promise;
+        resolve(pdf.numPages);
+      } catch { resolve(0); }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function updateDualPdfSummary() {
+  const hasQ = !!document.getElementById('fileQPdf').files[0];
+  const hasA = !!document.getElementById('fileAPdf').files[0];
+  const btn  = document.getElementById('dualPdfBtn');
+  const note = document.getElementById('dualPdfNote');
+  const summary = document.getElementById('dualPdfSummary');
+  const mismatch = document.getElementById('dualPdfMismatch');
+
+  if (!hasQ) { btn.disabled = true; note.textContent = 'Upload the questions PDF to start'; summary.style.display='none'; return; }
+
+  summary.style.display = 'block';
+  const qc = qPdfPageCount || '?';
+  const ac = aPdfPageCount || '?';
+  const pairs = qPdfPageCount || '?';
+
+  document.getElementById('dualPdfSummaryText').innerHTML =
+    `<strong style="color:#0f3460">Questions PDF:</strong> ${qc} pages &nbsp;·&nbsp; ` +
+    `<strong style="color:#0f3460">Answers PDF:</strong> ${hasA ? ac + ' pages' : 'not uploaded (Q-only mode)'} &nbsp;·&nbsp; ` +
+    `<strong style="color:#28a745">${pairs} pairs to process</strong>`;
+
+  mismatch.style.display = (hasA && qPdfPageCount && aPdfPageCount && qPdfPageCount !== aPdfPageCount) ? 'block' : 'none';
+
+  btn.disabled = false;
+  note.textContent = hasA ? 'Ready — both PDFs loaded' : 'Ready — answers PDF not uploaded (will extract questions only)';
+}
+
+function clearDualPdf() {
+  ['Q','A'].forEach(w => {
+    document.getElementById(`file${w}Pdf`).value = '';
+    document.getElementById(`drop${w}Pdf`).classList.remove('has-files');
+    document.getElementById(`${w.toLowerCase()}PdfName`).textContent = '';
+    document.getElementById(`${w.toLowerCase()}PdfInfo`).style.display = 'none';
+  });
+  qPdfPageCount = 0; aPdfPageCount = 0;
+  document.getElementById('dualPdfSummary').style.display = 'none';
+  document.getElementById('dualPdfBtn').disabled = true;
+  document.getElementById('dualPdfNote').textContent = 'Upload the questions PDF to start';
+}
+
+async function processDualPdf() {
+  const qFile = document.getElementById('fileQPdf').files[0];
+  const aFile = document.getElementById('fileAPdf').files[0];
+  if (!qFile) return showAlert('Upload the questions PDF first', 'error');
+
+  const total = qPdfPageCount || 1;
+  showProgress(true, 'Starting — rendering PDF pages…', '');
+  document.getElementById('progressLog').innerHTML = '';
+  setProgressPct(0);
+  document.getElementById('dualPdfBtn').disabled = true;
+
+  const fd = new FormData();
+  fd.append('questionsPdf', qFile);
+  if (aFile) fd.append('answersPdf', aFile);
+
+  // Custom SSE handler for dual-PDF (has extra status events)
+  try {
+    const resp   = await fetch('/api/batch/process-dual-pdf', { method: 'POST', body: fd });
+    const reader = resp.body.getReader();
+    const dec    = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const ev = JSON.parse(line.slice(5));
+        if (ev.type === 'status') {
+          document.getElementById('progressLabel').textContent = ev.message;
+          logLine(ev.message);
+          // Rough progress for rendering phases
+          if (ev.step === 1) setProgressPct(15);
+          if (ev.step === 2) setProgressPct(30);
+        } else if (ev.type === 'start') {
+          _progressTotal = ev.total;
+          _progressDone  = 0;
+          logLine(`Rendering complete. Extracting ${ev.total} pairs with Gemini…`);
+          setProgressPct(35);
+        } else {
+          handleSSE(ev);
+        }
+      }
+    }
+  } catch (err) {
+    logLine('Error: ' + err.message, 'error');
+    showAlert(err.message, 'error');
+  }
+
+  document.getElementById('dualPdfBtn').disabled = false;
+}
+
+// ── SSE stream processor (shared) ────────────────────────────────────────────
+async function streamProcess(url, body, type) {
+  const opts = { method: 'POST', body };
+  if (type === 'json') opts.headers = { 'Content-Type': 'application/json' };
+
+  try {
+    const resp   = await fetch(url, opts);
+    const reader = resp.body.getReader();
+    const dec    = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const ev = JSON.parse(line.slice(5));
+        handleSSE(ev);
+      }
+    }
+  } catch (err) {
+    logLine('Network error: ' + err.message, 'error');
+    showAlert('Connection error: ' + err.message, 'error');
+  }
+}
+
+let _progressTotal = 0;
+let _progressDone  = 0;
+
+function startProgress(total) {
+  _progressTotal = total;
+  _progressDone  = 0;
+  showProgress(true, `Processing 0 / ${total} pairs`, '');
+  document.getElementById('progressLog').innerHTML = '';
+  setProgressPct(0);
+}
+
+function handleSSE(ev) {
+  if (ev.type === 'start') {
+    logLine(`Starting ${ev.total} pairs…`);
+  }
+  if (ev.type === 'pair_start') {
+    logLine(`Pair ${ev.pair}/${ev.total} — sending to Gemini…`);
+  }
+  if (ev.type === 'pair_done') {
+    _progressDone++;
+    const pct = Math.round((_progressDone / _progressTotal) * 100);
+    setProgressPct(pct);
+    document.getElementById('progressLabel').textContent = `Processing ${_progressDone} / ${_progressTotal} pairs`;
+    logLine(`Pair ${ev.pair} — extracted ${ev.questions.length} questions`, 'success');
+    ev.questions.forEach(q => addQuestion(q));
+  }
+  if (ev.type === 'pair_error') {
+    _progressDone++;
+    logLine(`Pair ${ev.pair} failed: ${ev.error}`, 'error');
+    setProgressPct(Math.round((_progressDone / _progressTotal) * 100));
+  }
+  if (ev.type === 'complete') {
+    logLine(`Done! ${allQuestions.length} questions extracted total.`, 'success');
+    document.getElementById('progressLabel').textContent = `Complete — ${allQuestions.length} questions extracted`;
+    renderReview();
+  }
+  if (ev.type === 'error') {
+    logLine(`Error: ${ev.message}`, 'error');
+    showAlert(ev.message, 'error');
+  }
+}
+
+// ── Question accumulation ─────────────────────────────────────────────────────
+function addQuestion(q) {
+  const idx = allQuestions.length;
+  allQuestions.push(q);
+  const complete = q.stem && q.option_a && q.option_b && q.option_c && q.option_d && q.correct_option;
+  statuses[idx] = complete ? 'approved' : 'flagged';
+}
+
+// ── Review table ──────────────────────────────────────────────────────────────
+function renderReview() {
+  document.getElementById('reviewPanel').style.display = 'block';
+  rebuildTable();
+  updateCounts();
+  window.scrollTo({ top: document.getElementById('reviewPanel').offsetTop - 20, behavior: 'smooth' });
+}
+
+function rebuildTable() {
+  const tbody = document.getElementById('qTableBody');
+  tbody.innerHTML = '';
+  allQuestions.forEach((q, idx) => {
+    const status = statuses[idx] || 'flagged';
+    const tr = document.createElement('tr');
+    tr.className = status;
+    tr.id = `row_${idx}`;
+    const expts = Array.isArray(q.explanation) ? q.explanation.length : (q.explanation ? 1 : 0);
+    tr.innerHTML = `
+      <td>${idx+1}</td>
+      <td class="stem-cell" onclick="openModal(${idx})" title="${esc(q.stem||'')}">${esc((q.stem||'').slice(0,80))}${(q.stem||'').length>80?'…':''}</td>
+      <td><span class="correct-badge">${(q.correct_option||'?').toUpperCase()}</span></td>
+      <td>${q.subject_hint||q.subject||'—'}</td>
+      <td><span class="expl-count">${expts} pt${expts!==1?'s':''}</span></td>
+      <td>${q.has_image ? '<span class="img-dot" title="Has image"></span>' : '—'}</td>
+      <td>
+        <div class="row-status">
+          <button class="mini-btn mini-approve ${status==='approved'?'on':''}" onclick="setStatus(${idx},'approved')">✓</button>
+          <button class="mini-btn mini-reject ${status==='rejected'?'on':''}" onclick="setStatus(${idx},'rejected')">✕</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function setStatus(idx, status) {
+  statuses[idx] = status;
+  const row = document.getElementById(`row_${idx}`);
+  if (row) {
+    row.className = status;
+    row.querySelectorAll('.mini-btn').forEach(b => b.classList.remove('on'));
+    row.querySelector(`.mini-${status}`)?.classList.add('on');
+  }
+  updateCounts();
+}
+
+function approveAll()     { allQuestions.forEach((_,i) => setStatus(i,'approved')); }
+function rejectFlagged()  { allQuestions.forEach((_,i) => { if(statuses[i]==='flagged') setStatus(i,'rejected'); }); }
+
+function updateCounts() {
+  const approved = Object.values(statuses).filter(s=>s==='approved').length;
+  const flagged  = Object.values(statuses).filter(s=>s==='flagged').length;
+  document.getElementById('totalBadge').textContent    = `${allQuestions.length} total`;
+  document.getElementById('approvedBadge').textContent = `${approved} approved`;
+  document.getElementById('flaggedBadge').textContent  = `${flagged} flagged`;
+  document.getElementById('saveCount').textContent     = approved;
+  document.getElementById('saveBar').style.display     = approved > 0 ? 'flex' : 'none';
+}
+
+// ── Modal editor ──────────────────────────────────────────────────────────────
+function openModal(idx) {
+  editingIdx = idx;
+  const q = allQuestions[idx];
+  document.getElementById('modalTitle').textContent = `Edit Question ${idx+1}`;
+  document.getElementById('mStem').value    = q.stem || '';
+  document.getElementById('mA').value       = q.option_a || '';
+  document.getElementById('mB').value       = q.option_b || '';
+  document.getElementById('mC').value       = q.option_c || '';
+  document.getElementById('mD').value       = q.option_d || '';
+  document.getElementById('mCorrect').value = q.correct_option || 'a';
+  document.getElementById('mSubject').value = q.subject_hint || q.subject || 'anatomy';
+  document.getElementById('mDiff').value    = q.difficulty || 'medium';
+  renderModalExpl(q.explanation);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function renderModalExpl(explanation) {
+  const list = document.getElementById('mExplList');
+  list.innerHTML = '';
+  const pts = Array.isArray(explanation) ? explanation : (explanation ? [explanation] : []);
+  pts.forEach((pt, i) => {
+    const row = document.createElement('div');
+    row.className = 'expl-modal-row';
+    row.innerHTML = `<textarea rows="2" oninput="updateModalExpl()">${esc(pt)}</textarea>
+      <button class="expl-del-btn" onclick="removeModalExpl(${i})">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+function addModalExpl() {
+  const list = document.getElementById('mExplList');
+  const row = document.createElement('div');
+  row.className = 'expl-modal-row';
+  row.innerHTML = `<textarea rows="2" oninput="updateModalExpl()"></textarea>
+    <button class="expl-del-btn" onclick="removeModalExpl(-1)">×</button>`;
+  list.appendChild(row);
+  row.querySelector('textarea').focus();
+}
+
+function removeModalExpl(idx) {
+  const rows = document.getElementById('mExplList').querySelectorAll('.expl-modal-row');
+  if (idx >= 0 && rows[idx]) rows[idx].remove();
+  else if (idx === -1) rows[rows.length-1]?.remove();
+}
+
+function updateModalExpl() {} // real-time not needed, read on save
+
+function saveModal() {
+  if (editingIdx === null) return;
+  const q = allQuestions[editingIdx];
+  q.stem        = document.getElementById('mStem').value;
+  q.option_a    = document.getElementById('mA').value;
+  q.option_b    = document.getElementById('mB').value;
+  q.option_c    = document.getElementById('mC').value;
+  q.option_d    = document.getElementById('mD').value;
+  q.correct_option = document.getElementById('mCorrect').value;
+  q.subject_hint   = document.getElementById('mSubject').value;
+  q.subject        = q.subject_hint;
+  q.difficulty     = document.getElementById('mDiff').value;
+  q.explanation    = Array.from(document.getElementById('mExplList').querySelectorAll('textarea'))
+    .map(t => t.value.trim()).filter(Boolean);
+  closeModal();
+  rebuildTable();
+  updateCounts();
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').classList.remove('open');
+  editingIdx = null;
+}
+
+// ── Save to bank ──────────────────────────────────────────────────────────────
+async function saveAll() {
+  const approved = allQuestions
+    .map((q,i) => ({ ...q, subject: q.subject||q.subject_hint||'unknown' }))
+    .filter((_,i) => statuses[i] === 'approved');
+  if (!approved.length) return showAlert('No approved questions to save','error');
+
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('saveBtn').textContent = 'Saving…';
+
+  try {
+    const resp = await fetch('/api/ingest/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions: approved })
+    });
+    const data = await resp.json();
+    if (!data.success) return showAlert(data.error||'Save failed','error');
+    showAlert(`Saved ${data.saved} questions. ${data.duplicates?data.duplicates+' duplicates skipped. ':''} Total in bank: ${data.total_in_db}`,'success');
+    approved.forEach((_,i) => {
+      const origIdx = allQuestions.findIndex((q,qi) => statuses[qi]==='approved' && !q._saved);
+      if (origIdx>=0) { allQuestions[origIdx]._saved=true; setStatus(origIdx,'approved'); }
+    });
+  } catch(err) { showAlert('Error: '+err.message,'error'); }
+  finally {
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('saveBtn').textContent = 'Save to Question Bank';
+  }
+}
+
+function downloadJSON() {
+  const approved = allQuestions.filter((_,i)=>statuses[i]==='approved');
+  if (!approved.length) return showAlert('No approved questions','error');
+  const blob = new Blob([JSON.stringify(approved,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`fmge_batch_${Date.now()}.json`; a.click();
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function showProgress(show, label, count) {
+  document.getElementById('progressSection').style.display = show ? 'block' : 'none';
+  if (label) document.getElementById('progressLabel').textContent = label;
+  if (count !== undefined) document.getElementById('progressCount').textContent = count;
+}
+function setProgressPct(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+function logLine(msg, cls) {
+  const log = document.getElementById('progressLog');
+  const d = document.createElement('div');
+  d.className = 'log-line' + (cls ? ' '+cls : '');
+  d.textContent = msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+function showAlert(msg, type) {
+  const el = document.getElementById('alert');
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type !== 'error') setTimeout(() => el.style.display='none', 6000);
+}
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

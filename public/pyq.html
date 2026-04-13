@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PYQ Extractor — FMGE Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+.topbar{background:#0f3460;color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:15pt;font-weight:700}
+.topbar-links{display:flex;gap:18px}
+.topbar a{color:#48cae4;text-decoration:none;font-size:10pt}
+.container{max-width:1100px;margin:0 auto;padding:24px 20px}
+.card{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.card h2{font-size:12pt;font-weight:700;color:#0f3460;margin-bottom:16px}
+
+.info-box{background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin-bottom:18px;font-size:9.5pt;color:#1e3a8a;line-height:1.7}
+.info-box strong{display:block;margin-bottom:4px;font-size:10.5pt}
+
+.drop-zone{border:2.5px dashed #c8d8f0;border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:.2s;background:#f8fbff;position:relative}
+.drop-zone:hover,.drop-zone.drag{border-color:#0f3460;background:#eef3fc}
+.drop-zone.has-files{border-color:#28a745;background:#f0fff4;border-style:solid}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-zone .dz-icon{font-size:36px;margin-bottom:10px}
+.drop-zone .dz-label{font-size:12pt;font-weight:700;color:#0f3460}
+.drop-zone .dz-sub{font-size:9.5pt;color:#6c757d;margin-top:6px}
+
+.file-list{display:flex;flex-direction:column;gap:6px;margin-top:14px;max-height:180px;overflow-y:auto}
+.file-item{display:flex;align-items:center;gap:10px;background:#f8fbff;border:1px solid #e3eaf5;border-radius:7px;padding:8px 12px;font-size:9.5pt}
+.file-item .fi-name{flex:1;font-weight:600;color:#0f3460}
+.file-item .fi-size{color:#6c757d;font-size:8.5pt}
+.file-item .fi-del{background:none;border:none;color:#adb5bd;cursor:pointer;font-size:13pt;line-height:1}
+.file-item .fi-del:hover{color:#dc3545}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:7px;border:none;cursor:pointer;font-size:10.5pt;font-weight:600;transition:.2s}
+.btn-primary{background:#0f3460;color:#fff}.btn-primary:hover:not(:disabled){background:#1a4a7a}
+.btn-success{background:#28a745;color:#fff}.btn-success:hover:not(:disabled){background:#218838}
+.btn-outline{background:#fff;color:#0f3460;border:2px solid #0f3460}.btn-outline:hover{background:#f0f4ff}
+.btn-sm{padding:6px 14px;font-size:9pt}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.progress-bar{height:8px;background:#e9ecef;border-radius:4px;overflow:hidden;margin:12px 0;display:none}
+.progress-fill{height:100%;background:linear-gradient(90deg,#0f3460,#48cae4);border-radius:4px;transition:width .3s}
+
+.alert{padding:12px 16px;border-radius:8px;font-size:10pt;margin-bottom:16px;display:none}
+.alert-success{background:#d4edda;border:1px solid #c3e6cb;color:#155724}
+.alert-error{background:#f8d7da;border:1px solid #f5c6cb;color:#721c24}
+.alert-info{background:#d1ecf1;border:1px solid #bee5eb;color:#0c5460}
+
+/* File results summary */
+.file-results{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.file-result-badge{padding:5px 12px;border-radius:6px;font-size:9pt;font-weight:600;background:#dbeafe;color:#1e3a8a}
+.file-result-badge.error{background:#f8d7da;color:#721c24}
+
+/* Stats bar */
+.stats-bar{display:flex;gap:24px;padding:14px 20px;background:#f8fbff;border:1px solid #e3eaf5;border-radius:8px;margin-bottom:16px;flex-wrap:wrap}
+.stat-item .num{font-size:20pt;font-weight:800;color:#0f3460;line-height:1}
+.stat-item .lbl{font-size:8.5pt;color:#6c757d;text-transform:uppercase;letter-spacing:.4px}
+
+/* Subject filter */
+.filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filter-row label{font-size:9.5pt;font-weight:600;color:#0f3460}
+select.filter-sel{padding:6px 12px;border:1.5px solid #dee2e6;border-radius:6px;font-size:9.5pt;font-family:inherit;cursor:pointer}
+.search-box{padding:7px 12px;border:1.5px solid #dee2e6;border-radius:6px;font-size:9.5pt;width:240px;font-family:inherit}
+.search-box:focus{outline:none;border-color:#0f3460}
+
+/* Question table */
+.q-table{width:100%;border-collapse:collapse;font-size:9.5pt}
+.q-table th{background:#0f3460;color:#fff;padding:8px 12px;text-align:left;font-size:9pt;font-weight:600;white-space:nowrap}
+.q-table td{padding:8px 12px;border-bottom:1px solid #e9ecef;vertical-align:middle}
+.q-table tr:hover td{background:#f8fbff}
+.q-table tr.approved td{background:#f0fff4}
+.q-table tr.rejected td{opacity:.5}
+.stem-cell{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:#1a1a2e}
+.stem-cell:hover{color:#0f3460;text-decoration:underline}
+.badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:8pt;font-weight:600}
+.badge-blue{background:#dbeafe;color:#1e3a8a}
+.badge-green{background:#d4edda;color:#155724}
+.badge-orange{background:#fff3cd;color:#856404}
+.subject-sel{padding:3px 6px;border:1px solid #dee2e6;border-radius:4px;font-size:8.5pt;font-family:inherit;max-width:120px}
+.correct-circle{display:inline-flex;width:24px;height:24px;border-radius:50%;background:#0f3460;color:#fff;align-items:center;justify-content:center;font-weight:700;font-size:9pt}
+.row-btns{display:flex;gap:4px}
+.mini-btn{padding:2px 8px;border-radius:4px;border:1.5px solid;font-size:8pt;font-weight:700;cursor:pointer;transition:.1s}
+.mini-approve{border-color:#28a745;color:#28a745;background:#fff}.mini-approve:hover,.mini-approve.on{background:#28a745;color:#fff}
+.mini-reject{border-color:#dc3545;color:#dc3545;background:#fff}.mini-reject:hover,.mini-reject.on{background:#dc3545;color:#fff}
+.expl-count{color:#6c757d;font-size:8.5pt}
+.badge-img{background:#fff3cd;color:#856404;border:1px solid #ffc107;font-size:7.5pt;padding:2px 7px;border-radius:5px;font-weight:700;white-space:nowrap}
+.img-warning{background:#fff8e1;border:1.5px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:9.5pt;color:#856404;display:flex;align-items:center;gap:8px}
+
+/* Save bar */
+.save-bar{position:sticky;bottom:0;background:#fff;border-top:2px solid #dee2e6;padding:14px 28px;display:none;align-items:center;gap:12px;box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:100;flex-wrap:wrap}
+.save-bar .save-info{flex:1;font-size:10pt;color:#495057}
+.save-bar strong{color:#0f3460}
+
+/* Detail modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:min(680px,95vw);max-height:85vh;overflow-y:auto;position:relative}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:18pt;cursor:pointer;color:#6c757d}
+.modal h3{font-size:12pt;font-weight:700;color:#0f3460;margin-bottom:14px;padding-right:28px}
+.modal-stem{background:#f8fbff;border:1.5px solid #e3eaf5;border-radius:8px;padding:12px 14px;font-size:10.5pt;line-height:1.65;margin-bottom:14px}
+.modal-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.modal-opt{padding:9px 12px;border-radius:7px;border:1.5px solid #dee2e6;font-size:10pt}
+.modal-opt.correct{border-color:#28a745;background:#f0fff4;font-weight:600}
+.modal-opt .opt-key{font-weight:700;color:#0f3460;margin-right:6px}
+.expl-list{margin:0;padding-left:18px}
+.expl-list li{margin-bottom:6px;font-size:10pt;line-height:1.6;color:#2d3436}
+.modal-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.meta-chip{padding:4px 10px;border-radius:6px;font-size:8.5pt;font-weight:600;background:#f0f4ff;color:#0f3460}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>PYQ Extractor</h1>
+    <div style="font-size:9pt;color:#adb5bd;margin-top:2px">Text-based PDFs → instant extraction, zero AI cost</div>
+  </div>
+  <div class="topbar-links">
+    <a href="/ingest.html">Single Pair</a>
+    <a href="/batch.html">Batch</a>
+    <a href="/">Generator</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="alert" id="alert"></div>
+
+  <!-- Upload card -->
+  <div class="card">
+    <div class="info-box">
+      <strong>How this works</strong>
+      Upload one or more PYQ PDFs (text-based, not scanned). The system extracts every question, options, correct answer, and explanation instantly — no AI, no API cost. Subject is auto-detected from keywords. Works on any PDF matching the standard FMGE question format.
+    </div>
+
+    <div class="drop-zone" id="dropZone"
+      ondragover="e => { e.preventDefault(); dropZone.classList.add('drag'); }"
+      ondragleave="dropZone.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <input type="file" id="pdfInput" accept=".pdf" multiple onchange="addFiles(this)" onclick="event.stopPropagation()">
+      <div class="dz-icon">📄</div>
+      <div class="dz-label">Drop PYQ PDFs here</div>
+      <div class="dz-sub">Click to browse · Multiple files supported · 300 MB each max</div>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="extractBtn" onclick="extractAll()" disabled>
+        Extract All Questions
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="clearAll()">Clear</button>
+      <span style="font-size:9pt;color:#6c757d" id="uploadNote">Upload PYQ PDFs to start</span>
+    </div>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Results card -->
+  <div class="card" id="resultsCard" style="display:none">
+    <div class="file-results" id="fileResults"></div>
+
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-item"><div class="num" id="statTotal">0</div><div class="lbl">Extracted</div></div>
+      <div class="stat-item"><div class="num" id="statApproved">0</div><div class="lbl">Approved</div></div>
+      <div class="stat-item"><div class="num" id="statSubjects">0</div><div class="lbl">Subjects detected</div></div>
+      <div class="stat-item"><div class="num" id="statImgNeeded" style="color:#856404">0</div><div class="lbl">Need image</div></div>
+    </div>
+
+    <div class="filter-row">
+      <label>Filter:</label>
+      <select class="filter-sel" id="filterSubject" onchange="applyFilter()">
+        <option value="">All subjects</option>
+        <option value="anatomy">Anatomy</option>
+        <option value="physiology">Physiology</option>
+        <option value="biochemistry">Biochemistry</option>
+        <option value="pathology">Pathology</option>
+        <option value="pharmacology">Pharmacology</option>
+        <option value="medicine">Medicine</option>
+        <option value="surgery">Surgery</option>
+        <option value="obgy">OB/GY</option>
+        <option value="paediatrics">Paediatrics</option>
+        <option value="psychiatry">Psychiatry</option>
+        <option value="ophthalmology">Ophthalmology</option>
+        <option value="ent">ENT</option>
+        <option value="dermatology">Dermatology</option>
+        <option value="radiology">Radiology</option>
+        <option value="community_medicine">Community Medicine</option>
+        <option value="forensic_medicine">Forensic Medicine</option>
+        <option value="null">Undetected</option>
+      </select>
+      <input type="text" class="search-box" id="searchBox" placeholder="Search stem…" oninput="applyFilter()">
+      <button class="btn btn-outline btn-sm" onclick="approveAll()">Approve All</button>
+      <button class="btn btn-outline btn-sm" onclick="approveVisible()">Approve Visible</button>
+      <span style="font-size:9pt;color:#6c757d" id="filterNote"></span>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="q-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Question stem</th>
+            <th>Correct</th>
+            <th>Subject</th>
+            <th>Expl.</th>
+            <th>Source</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="qTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Save bar -->
+<div class="save-bar" id="saveBar">
+  <div class="save-info">
+    <strong id="saveCount">0</strong> questions approved
+    <span id="dupNote" style="color:#856404;margin-left:10px;display:none">⚠ Duplicates auto-skipped</span>
+  </div>
+  <button class="btn btn-outline btn-sm" onclick="downloadJSON()">Download JSON</button>
+  <button class="btn btn-success" id="saveBtn" onclick="saveAll()">Save to Question Bank</button>
+</div>
+
+<!-- Detail modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="maybeClose(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h3 id="modalTitle">Question Detail</h3>
+    <div class="img-warning" id="modalImgWarning" style="display:none"></div>
+    <div class="modal-stem" id="modalStem"></div>
+    <div class="modal-opts" id="modalOpts"></div>
+    <div class="modal-meta" id="modalMeta"></div>
+    <div style="font-size:9.5pt;font-weight:700;color:#0f3460;margin-bottom:8px">Explanation</div>
+    <ul class="expl-list" id="modalExpl"></ul>
+  </div>
+</div>
+
+<script>
+let selectedFiles = [];
+let questions     = [];
+let statuses      = {};  // idx → 'approved' | 'rejected'
+let visibleIdxs   = [];  // filtered view
+
+// ── File management ───────────────────────────────────────────────────────────
+function addFiles(input) {
+  Array.from(input.files).forEach(f => {
+    if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f);
+  });
+  input.value = '';
+  renderFileList();
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf'));
+  files.forEach(f => { if (!selectedFiles.find(x => x.name === f.name)) selectedFiles.push(f); });
+  renderFileList();
+}
+
+function removeFile(i) {
+  selectedFiles.splice(i, 1);
+  renderFileList();
+}
+
+function renderFileList() {
+  const list = document.getElementById('fileList');
+  list.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const d = document.createElement('div');
+    d.className = 'file-item';
+    d.innerHTML = `<span class="fi-name">📄 ${esc(f.name)}</span>
+      <span class="fi-size">${(f.size/1024/1024).toFixed(1)} MB</span>
+      <button class="fi-del" onclick="removeFile(${i})">×</button>`;
+    list.appendChild(d);
+  });
+  document.getElementById('dropZone').classList.toggle('has-files', selectedFiles.length > 0);
+  document.getElementById('extractBtn').disabled = selectedFiles.length === 0;
+  document.getElementById('uploadNote').textContent =
+    selectedFiles.length ? `${selectedFiles.length} PDF${selectedFiles.length>1?'s':''} ready` : 'Upload PYQ PDFs to start';
+}
+
+function clearAll() {
+  selectedFiles = []; questions = []; statuses = {}; visibleIdxs = [];
+  renderFileList();
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('saveBar').style.display = 'none';
+  document.getElementById('qTableBody').innerHTML = '';
+  hideAlert();
+}
+
+// ── Extract ───────────────────────────────────────────────────────────────────
+async function extractAll() {
+  if (!selectedFiles.length) return;
+
+  const fd = new FormData();
+  selectedFiles.forEach(f => fd.append('pdfs', f));
+
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('progressBar').style.display = 'block';
+  setProgress(30);
+  hideAlert();
+
+  try {
+    const resp = await fetch('/api/pyq/extract', { method: 'POST', body: fd });
+    setProgress(80);
+    const data = await resp.json();
+    setProgress(100);
+
+    if (!resp.ok || !data.success) { showAlert(data.error || 'Extraction failed', 'error'); return; }
+
+    questions = data.questions;
+    statuses  = {};
+    questions.forEach((_, i) => { statuses[i] = 'approved'; }); // default approve all
+
+    // Show file results
+    const fr = document.getElementById('fileResults');
+    fr.innerHTML = '';
+    data.files.forEach(f => {
+      const b = document.createElement('div');
+      b.className = 'file-result-badge' + (f.error ? ' error' : '');
+      b.textContent = f.error ? `${f.file}: ERROR` : `${f.file}: ${f.extracted} questions`;
+      fr.appendChild(b);
+    });
+
+    document.getElementById('resultsCard').style.display = 'block';
+    applyFilter();
+    updateStats();
+    showAlert(`Extracted ${data.total} questions from ${data.files.length} PDF${data.files.length>1?'s':''}. All approved by default — reject any you don't want.`, 'success');
+  } catch (err) {
+    showAlert('Error: ' + err.message, 'error');
+  } finally {
+    document.getElementById('extractBtn').disabled = false;
+    setTimeout(() => { document.getElementById('progressBar').style.display = 'none'; setProgress(0); }, 800);
+  }
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+const SUBJECTS = ['anatomy','physiology','biochemistry','pathology','pharmacology','medicine','surgery','obgy','paediatrics','psychiatry','ophthalmology','ent','dermatology','radiology','community_medicine','forensic_medicine'];
+
+function applyFilter() {
+  const subj   = document.getElementById('filterSubject').value;
+  const search = document.getElementById('searchBox').value.toLowerCase();
+
+  visibleIdxs = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => {
+      if (subj === 'null' && q.subject) return false;
+      if (subj && subj !== 'null' && q.subject !== subj) return false;
+      if (search && !q.stem.toLowerCase().includes(search)) return false;
+      return true;
+    })
+    .map(({ i }) => i);
+
+  document.getElementById('filterNote').textContent = `Showing ${visibleIdxs.length} of ${questions.length}`;
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('qTableBody');
+  tbody.innerHTML = '';
+  visibleIdxs.forEach(idx => {
+    const q = questions[idx];
+    const status = statuses[idx];
+    const tr = document.createElement('tr');
+    tr.className = status;
+    tr.id = `row_${idx}`;
+
+    const subjOpts = SUBJECTS.map(s =>
+      `<option value="${s}" ${q.subject===s?'selected':''}>${s}</option>`
+    ).join('');
+
+    const exptCount = Array.isArray(q.explanation) ? q.explanation.length : (q.explanation ? 1 : 0);
+
+    tr.innerHTML = `
+      <td style="color:#6c757d;font-size:8.5pt">${idx+1}</td>
+      <td class="stem-cell" onclick="openModal(${idx})">
+        ${q.image_needed ? '<span class="badge-img" title="This question has an image that could not be extracted from the PDF">📷 IMG</span> ' : ''}${esc(q.stem.slice(0,85))}${q.stem.length>85?'…':''}
+      </td>
+      <td><span class="correct-circle">${(q.correct_option||'?').toUpperCase()}</span></td>
+      <td>
+        <select class="subject-sel" onchange="setSubject(${idx},this.value)">
+          <option value="">—</option>${subjOpts}
+        </select>
+      </td>
+      <td><span class="expl-count">${exptCount} pt${exptCount!==1?'s':''}</span></td>
+      <td style="font-size:8.5pt;color:#6c757d;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(q.source||'')}</td>
+      <td>
+        <div class="row-btns">
+          <button class="mini-btn mini-approve ${status==='approved'?'on':''}" onclick="setStatus(${idx},'approved')">✓</button>
+          <button class="mini-btn mini-reject ${status==='rejected'?'on':''}" onclick="setStatus(${idx},'rejected')">✕</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function setStatus(idx, status) {
+  statuses[idx] = status;
+  const row = document.getElementById(`row_${idx}`);
+  if (row) {
+    row.className = status;
+    row.querySelectorAll('.mini-btn').forEach(b => b.classList.remove('on'));
+    row.querySelector(`.mini-${status}`)?.classList.add('on');
+  }
+  updateStats();
+}
+
+function setSubject(idx, val) {
+  questions[idx].subject = val || null;
+  questions[idx].subject_hint = val || null;
+}
+
+function approveAll()     { questions.forEach((_, i) => setStatus(i, 'approved')); }
+function approveVisible() { visibleIdxs.forEach(i => setStatus(i, 'approved')); }
+
+function updateStats() {
+  const approved   = Object.values(statuses).filter(s => s === 'approved').length;
+  const subjects   = new Set(questions.filter((q,i) => statuses[i]==='approved' && q.subject).map(q => q.subject)).size;
+  const imgNeeded  = questions.filter(q => q.image_needed).length;
+  document.getElementById('statTotal').textContent     = questions.length;
+  document.getElementById('statApproved').textContent  = approved;
+  document.getElementById('statSubjects').textContent  = subjects;
+  document.getElementById('statImgNeeded').textContent = imgNeeded;
+  document.getElementById('saveCount').textContent     = approved;
+  document.getElementById('saveBar').style.display     = approved > 0 ? 'flex' : 'none';
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(idx) {
+  const q = questions[idx];
+  document.getElementById('modalTitle').textContent = `Question ${idx+1}`;
+  document.getElementById('modalStem').textContent  = q.stem;
+
+  // Image warning banner
+  const imgWarn = document.getElementById('modalImgWarning');
+  if (q.image_needed) {
+    imgWarn.style.display = 'flex';
+    imgWarn.innerHTML = `<span style="font-size:16px">📷</span>
+      <div><strong>Image required</strong> — This question references a diagram/ECG/X-ray that exists in the PDF but cannot be extracted as text.
+      You'll need to manually attach the image using the Ingest page after saving.</div>`;
+  } else {
+    imgWarn.style.display = 'none';
+  }
+
+  const opts = document.getElementById('modalOpts');
+  opts.innerHTML = ['a','b','c','d'].map(o => `
+    <div class="modal-opt ${q.correct_option===o?'correct':''}">
+      <span class="opt-key">${o.toUpperCase()}.</span>${esc(q['option_'+o]||'')}
+      ${q.correct_option===o ? ' <span style="color:#28a745;font-size:8.5pt">✓ Correct</span>' : ''}
+    </div>`).join('');
+
+  const meta = document.getElementById('modalMeta');
+  meta.innerHTML = [
+    q.source       ? `<span class="meta-chip">📄 ${esc(q.source)}</span>` : '',
+    q.subject      ? `<span class="meta-chip">🏷 ${q.subject}</span>` : '<span class="meta-chip" style="background:#fff3cd">🏷 Subject undetected</span>',
+    q.difficulty   ? `<span class="meta-chip">${q.difficulty}</span>` : '',
+    q.image_needed ? `<span class="meta-chip" style="background:#fff3cd;color:#856404">📷 Image needed</span>` : ''
+  ].join('');
+
+  const expl = document.getElementById('modalExpl');
+  const pts  = Array.isArray(q.explanation) ? q.explanation : (q.explanation ? [q.explanation] : []);
+  expl.innerHTML = pts.length ? pts.map(p => `<li>${esc(p)}</li>`).join('') : '<li style="color:#6c757d">No explanation extracted</li>';
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal()     { document.getElementById('modalOverlay').classList.remove('open'); }
+function maybeClose(e)    { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+async function saveAll() {
+  const approved = questions
+    .filter((_, i) => statuses[i] === 'approved')
+    .map(q => ({ ...q, subject: q.subject || 'unknown' }));
+  if (!approved.length) return showAlert('No approved questions', 'error');
+
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('saveBtn').textContent = 'Saving…';
+
+  try {
+    const resp = await fetch('/api/ingest/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions: approved })
+    });
+    const data = await resp.json();
+    if (!data.success) return showAlert(data.error || 'Save failed', 'error');
+    if (data.duplicates > 0) document.getElementById('dupNote').style.display = 'inline';
+    showAlert(`Saved ${data.saved} questions. ${data.duplicates ? data.duplicates+' duplicates skipped. ' : ''} Total in bank: ${data.total_in_db}`, 'success');
+  } catch (err) {
+    showAlert('Error: ' + err.message, 'error');
+  } finally {
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('saveBtn').textContent = 'Save to Question Bank';
+  }
+}
+
+function downloadJSON() {
+  const approved = questions.filter((_, i) => statuses[i] === 'approved');
+  if (!approved.length) return;
+  const blob = new Blob([JSON.stringify(approved, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `pyq_extracted_${Date.now()}.json`; a.click();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setProgress(pct) { document.getElementById('progressFill').style.width = pct + '%'; }
+function showAlert(msg, type) {
+  const el = document.getElementById('alert');
+  el.className = `alert alert-${type}`; el.textContent = msg; el.style.display = 'block';
+  if (type !== 'error') setTimeout(hideAlert, 8000);
+}
+function hideAlert() { document.getElementById('alert').style.display = 'none'; }
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Drag-and-drop on dropzone
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', handleDrop);
+dz.addEventListener('click', () => document.getElementById('pdfInput').click());
+</script>
+</body>
+</html>

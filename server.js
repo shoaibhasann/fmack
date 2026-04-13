@@ -8,6 +8,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GoogleGenAI }        = require('@google/genai');
 const puppeteer = require('puppeteer');
 const path = require('path');
+const fs = require('fs');
 const { PDFDocument, rgb } = require('pdf-lib');
 
 const app = express();
@@ -23,6 +24,43 @@ const upload = multer({
     const ext = path.extname(file.originalname).toLowerCase();
     if (['.pdf', '.doc', '.docx', '.txt'].includes(ext)) cb(null, true);
     else cb(new Error('Supported: PDF, DOC, DOCX, TXT'));
+  }
+});
+
+// ─── Ingest setup ─────────────────────────────────────────────────────────────
+
+const UPLOADS_DIR = path.join(__dirname, 'uploads', 'questions');
+const DATA_DIR    = path.join(__dirname, 'data');
+const TEMP_DIR    = path.join(__dirname, 'temp');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+if (!fs.existsSync(DATA_DIR))    fs.mkdirSync(DATA_DIR,    { recursive: true });
+if (!fs.existsSync(TEMP_DIR))    fs.mkdirSync(TEMP_DIR,    { recursive: true });
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/pdfjs',   express.static(path.join(__dirname, 'node_modules', 'pdfjs-dist', 'build')));
+
+// Hidden page used by Puppeteer to render PDF pages via pdfjs-dist
+app.get('/pdf-renderer', (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'pdf-renderer.html'))
+);
+
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) cb(null, true);
+    else cb(new Error('Images only: JPG, PNG, WEBP'));
+  }
+});
+
+const pdfUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 300 * 1024 * 1024 }, // 300MB — handles large scanned books
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === '.pdf') cb(null, true);
+    else cb(new Error('PDF files only'));
   }
 });
 
@@ -1082,6 +1120,823 @@ ${questionsHTML}
 </body>
 </html>`;
 }
+
+// ─── Ingest Routes ───────────────────────────────────────────────────────────
+
+const INGEST_PROMPT_TWO = `You are given TWO scanned pages from an FMGE exam preparation book.
+IMAGE 1: Question page — numbered questions with stem text and answer options a, b, c, d.
+IMAGE 2: Answer/Explanation page — answer keys with brief clinical explanations.
+
+Extract ALL questions from IMAGE 1 and match each with its answer from IMAGE 2 by question number.
+
+Return ONLY valid JSON, no markdown, no code fences, start with { end with }:
+{
+  "questions": [
+    {
+      "q_num": 3,
+      "stem": "exact full question text as printed",
+      "option_a": "exact option a text",
+      "option_b": "exact option b text",
+      "option_c": "exact option c text",
+      "option_d": "exact option d text",
+      "correct_option": "b",
+      "correct_answer_text": "exact text of the correct answer",
+      "explanation": ["<bullet 1 from book>", "<bullet 2 from book>"],
+      "source": "Most Recent Question July 2023",
+      "has_image": false,
+      "image_description": null,
+      "subject_hint": "anatomy"
+    }
+  ],
+  "page_notes": "e.g. 6 questions found, 6 answers matched"
+}
+
+Rules:
+- Copy stems and options EXACTLY as printed — do not paraphrase
+- explanation: array of bullet points copied EXACTLY from IMAGE 2 for that question. Extract only the bullet points that are visibly printed — do NOT add, invent, or infer extra points. If the book shows 2 bullets, return 2. If it shows 4, return 4. Never exceed what is printed.
+- If answer not found on IMAGE 2, set correct_option: null
+- If question references a diagram or image, set has_image: true and describe it in image_description
+- subject_hint must be one of: anatomy, physiology, biochemistry, pathology, pharmacology, medicine, surgery, obgy, paediatrics, psychiatry, ophthalmology, ent, dermatology, radiology, community_medicine
+- Match answers by question number only — never guess`;
+
+const INGEST_PROMPT_ONE = `You are given a scanned page from an FMGE exam preparation book containing questions only.
+
+Extract ALL questions visible on this page.
+
+Return ONLY valid JSON, no markdown, no code fences:
+{
+  "questions": [
+    {
+      "q_num": 1,
+      "stem": "exact full question text",
+      "option_a": "option a",
+      "option_b": "option b",
+      "option_c": "option c",
+      "option_d": "option d",
+      "correct_option": null,
+      "correct_answer_text": null,
+      "explanation": [],
+      "source": "source tag if visible else null",
+      "has_image": false,
+      "image_description": null,
+      "subject_hint": "anatomy"
+    }
+  ],
+  "page_notes": "question-only page — answers not available"
+}
+
+Copy text EXACTLY as printed. Set correct_option null since this is question-only page.`;
+
+// POST /api/ingest/extract — 2 images → structured questions via Gemini Vision
+app.post('/api/ingest/extract', imageUpload.fields([
+  { name: 'questionPage', maxCount: 1 },
+  { name: 'answerPage',   maxCount: 1 }
+]), async (req, res) => {
+  try {
+    if (!req.files?.questionPage) {
+      return res.status(400).json({ error: 'Question page image is required' });
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY not set' });
+    }
+
+    const qImg = req.files.questionPage[0];
+    const aImg = req.files.answerPage?.[0];
+
+    const parts = [
+      { inlineData: { data: qImg.buffer.toString('base64'), mimeType: qImg.mimetype } }
+    ];
+
+    if (aImg) {
+      parts.push({ inlineData: { data: aImg.buffer.toString('base64'), mimeType: aImg.mimetype } });
+      parts.push({ text: INGEST_PROMPT_TWO });
+    } else {
+      parts.push({ text: INGEST_PROMPT_ONE });
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const result = await ai.models.generateContent({
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts }],
+      config: { temperature: 0.1, maxOutputTokens: 8192 }
+    });
+
+    const raw = result.text;
+    let data;
+    try {
+      data = parseGeminiJSON(raw);
+    } catch (e) {
+      return res.status(500).json({ error: 'Gemini returned unparseable response', raw: raw.slice(0, 600) });
+    }
+
+    if (!Array.isArray(data.questions)) {
+      return res.status(500).json({ error: 'Unexpected Gemini response structure', raw: raw.slice(0, 600) });
+    }
+
+    res.json({
+      success: true,
+      questions: data.questions,
+      page_notes: data.page_notes || '',
+      total: data.questions.length
+    });
+
+  } catch (err) {
+    console.error('Ingest extract error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ingest/save — save approved questions to data/questions.json
+app.post('/api/ingest/save', (req, res) => {
+  try {
+    const { questions } = req.body;
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: 'No questions provided' });
+    }
+
+    const dbPath = path.join(DATA_DIR, 'questions.json');
+    let existing = [];
+    if (fs.existsSync(dbPath)) {
+      try { existing = JSON.parse(fs.readFileSync(dbPath, 'utf-8')); } catch {}
+    }
+
+    // Dedup: compare first 80 chars of stem
+    const existingStems = new Set(existing.map(q => (q.stem || '').slice(0, 80).toLowerCase().trim()));
+    const saved = [];
+    const dupes = [];
+
+    for (const q of questions) {
+      const key = (q.stem || '').slice(0, 80).toLowerCase().trim();
+      if (existingStems.has(key)) {
+        dupes.push(q.q_num);
+      } else {
+        const record = {
+          id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          q_num:               q.q_num,
+          stem:                q.stem,
+          option_a:            q.option_a,
+          option_b:            q.option_b,
+          option_c:            q.option_c,
+          option_d:            q.option_d,
+          correct_option:      q.correct_option,
+          correct_answer_text: q.correct_answer_text,
+          explanation:         Array.isArray(q.explanation) ? q.explanation : (q.explanation ? [q.explanation] : []),
+          source:              q.source,
+          subject:             q.subject || q.subject_hint || 'unknown',
+          topic:               q.topic   || null,
+          difficulty:          q.difficulty || 'medium',
+          has_image:           q.has_image || false,
+          image_url:           q.image_url || null,
+          image_description:   q.image_description || null,
+          tags:                q.tags || [],
+          created_at:          new Date().toISOString()
+        };
+        saved.push(record);
+        existingStems.add(key);
+      }
+    }
+
+    const updated = [...existing, ...saved];
+    fs.writeFileSync(dbPath, JSON.stringify(updated, null, 2));
+
+    res.json({
+      success: true,
+      saved: saved.length,
+      duplicates: dupes.length,
+      duplicate_nums: dupes,
+      total_in_db: updated.length
+    });
+
+  } catch (err) {
+    console.error('Ingest save error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ingest/upload-image — store a question diagram image to disk
+app.post('/api/ingest/upload-image', imageUpload.single('image'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+
+    const { questionId } = req.body;
+    const ext      = path.extname(req.file.originalname).toLowerCase() || '.png';
+    const filename = `${questionId || `img_${Date.now()}`}${ext}`;
+    const filepath = path.join(UPLOADS_DIR, filename);
+
+    fs.writeFileSync(filepath, req.file.buffer);
+
+    res.json({
+      success: true,
+      url: `/uploads/questions/${filename}`,
+      filename
+    });
+
+  } catch (err) {
+    console.error('Image upload error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ingest/stats — question bank summary for admin dashboard
+app.get('/api/ingest/stats', (req, res) => {
+  try {
+    const dbPath = path.join(DATA_DIR, 'questions.json');
+    if (!fs.existsSync(dbPath)) return res.json({ total: 0, subjects: {}, has_image: 0 });
+
+    const qs = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+    const subjects = {};
+    let has_image = 0;
+    qs.forEach(q => {
+      const s = q.subject || 'unknown';
+      subjects[s] = (subjects[s] || 0) + 1;
+      if (q.has_image) has_image++;
+    });
+
+    res.json({ total: qs.length, subjects, has_image });
+  } catch (err) {
+    res.json({ total: 0, subjects: {}, has_image: 0 });
+  }
+});
+
+// ─── PYQ Extractor (text-based PDFs, zero Gemini) ────────────────────────────
+
+const SUBJECT_KEYWORDS = {
+  anatomy:           ['nerve','artery','vein','bone','muscle','ligament','foramen','fascia','lymph','embryo','histology','thorax','abdomen','pelvis','vertebra','cranial'],
+  physiology:        ['jvp','ecg','action potential','cardiac output','renal','glomerular','spirometry','reflex','hormone','receptor','compliance','tidal volume'],
+  biochemistry:      ['enzyme','cofactor','coenzyme','substrate','atp','nadh','krebs','glycolysis','fatty acid','amino acid','dna','rna','nucleotide','metabolism','cholesterol'],
+  pathology:         ['neoplasm','carcinoma','metastasis','inflammation','necrosis','infarct','granuloma','fibrosis','biopsy','histopathology','mutation','tumour'],
+  pharmacology:      ['drug','dose','receptor','agonist','antagonist','antibiotic','inhibitor','penicillin','amoxicillin','warfarin','heparin','beta blocker','ace inhibitor'],
+  medicine:          ['hypertension','diabetes','infarction','heart failure','stroke','seizure','pneumonia','tuberculosis','hepatitis','cirrhosis','renal failure'],
+  surgery:           ['appendicitis','hernia','cholecystitis','bowel obstruction','peritonitis','fracture','dislocation','tourniquet','anastomosis','laparotomy'],
+  obgy:              ['obstetric','gynaecology','pregnancy','labour','placenta','uterus','ovary','menstrual','preeclampsia','abortion','contraception','amenorrhea'],
+  paediatrics:       ['child','infant','neonate','growth','vaccination','milestone','kwashiorkor','marasmus','juvenile','congenital','paediatric'],
+  psychiatry:        ['schizophrenia','depression','bipolar','anxiety','phobia','psychosis','delusion','hallucination','ocd','ptsd','autism','dementia','mania'],
+  ophthalmology:     ['eye','retina','cornea','lens','glaucoma','cataract','optic','visual','conjunctiva','pupil','refraction','fundus'],
+  ent:               ['ear','nose','throat','tympanic','cochlea','larynx','tonsil','sinusitis','epistaxis','hearing','vertigo','otitis'],
+  dermatology:       ['skin','rash','eczema','psoriasis','acne','melanoma','pemphigus','dermatitis','pruritus','alopecia','vitiligo','lesion'],
+  radiology:         ['x-ray','ct scan','mri','ultrasound','contrast','radiograph','opacity','consolidation','shadow','imaging'],
+  community_medicine:['epidemiology','prevalence','incidence','vaccination','immunization','sanitation','nutrition','public health','survey','mortality','morbidity','water','sewage','cohort','case control'],
+  forensic_medicine: ['postmortem','autopsy','rigor','livor','putrefaction','wound','medicolegal','poison','forensic','death','hanging','drowning']
+};
+
+function detectSubject(stem) {
+  const lower = stem.toLowerCase();
+  let best = null, bestScore = 0;
+  for (const [subj, kws] of Object.entries(SUBJECT_KEYWORDS)) {
+    const score = kws.filter(k => lower.includes(k)).length;
+    if (score > bestScore) { bestScore = score; best = subj; }
+  }
+  return bestScore > 0 ? best : null;
+}
+
+function cleanOption(raw) {
+  return (raw || '')
+    .replace(/\n/g, ' ')
+    .replace(/\s{2,}\d+\s*$/, '')   // trailing page numbers
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function joinExplanationLines(raw) {
+  // Stop at the first table-like section or "Incorrect Options" section
+  // These signal we've left the real bullet-point explanation
+  const stopPattern = /\n(?:Incorrect\s+Options?|Correct\s+Options?|Feature\s+Details?|ECG\s+Irregularly|Atrial\s+fibrillation\s*:|Mitral\s+stenosis\s*:|JVP\s+Waveform|JVP\s+finding)/i;
+  const stopMatch = raw.search(stopPattern);
+  const cleanRaw = stopMatch > 0 ? raw.slice(0, stopMatch) : raw;
+
+  const lines = cleanRaw.split('\n').map(l => l.trim()).filter(Boolean);
+  const points = [];
+
+  for (const line of lines) {
+    // Skip pure page numbers (lone digits) or very short lines
+    if (/^\d+$/.test(line) || line.length < 10) continue;
+
+    if (/^[•\-\*]/.test(line)) {
+      // Real bullet — start a new point
+      points.push(line.replace(/^[•\-\*]\s*/, '').trim());
+    } else if (points.length > 0) {
+      // Continuation of previous bullet (wrapped line)
+      const last = points[points.length - 1];
+      if (/[.!?]$/.test(last)) {
+        // Previous point ended — this is a new prose point only if long enough
+        if (line.length > 30) points.push(line);
+      } else {
+        points[points.length - 1] = last + ' ' + line;
+      }
+    } else if (line.length > 30) {
+      // First prose line before any bullet (intro sentence)
+      points.push(line);
+    }
+  }
+
+  return points
+    .map(p => p.trim())
+    .filter(p =>
+      p.length > 15 &&
+      !/^(Incorrect|Correct\s*(Option|Answer)|Reference|Learning\s*Outcome|Feature|Cause|Management|ECG|Complications|Treatment|Pathophysiology|Clinical\s*features|Auscultation)/i.test(p)
+    );
+}
+
+// Phrases that indicate the question requires a visual (image/diagram)
+const IMAGE_HINT_PATTERN = /\b(shown?\s+below|shown?\s+above|as\s+shown|given\s+below|given\s+above|see\s+(?:the\s+)?(?:figure|image|diagram|picture|photo|graph|chart|x.?ray|ecg|eeg|mri|ct)|(?:ecg|eeg|x.?ray|mri|ct\s+scan|photograph|picture|image|diagram|figure|graph)\s+(?:is\s+)?shown|refer\s+to\s+(?:the\s+)?(?:figure|image|diagram)|following\s+(?:image|figure|diagram|picture|x.?ray|ecg|mri|ct)|the\s+(?:image|figure|diagram|picture|x.?ray|ecg|mri|ct)\s+(?:below|above))\b/i;
+
+function parsePYQBlock(raw) {
+  const stem = (raw.match(/^([\s\S]*?)Option\s*1\s*:/i)?.[1] || '')
+    .replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+  const option_a = cleanOption(raw.match(/Option\s*1\s*:\s*\n([\s\S]*?)Option\s*2\s*:/i)?.[1]);
+  const option_b = cleanOption(raw.match(/Option\s*2\s*:\s*\n([\s\S]*?)Option\s*3\s*:/i)?.[1]);
+  const option_c = cleanOption(raw.match(/Option\s*3\s*:\s*\n([\s\S]*?)Option\s*4\s*:/i)?.[1]);
+  const option_d = cleanOption(raw.match(/Option\s*4\s*:\s*\n([\s\S]*?)Correct\s*option/i)?.[1]);
+  const correctNum = raw.match(/Correct\s*option\s*:\s*(\d)/i)?.[1];
+  const correctMap = { '1': 'a', '2': 'b', '3': 'c', '4': 'd' };
+  const correct_option = correctMap[correctNum] || null;
+  const explRaw = raw.match(/Explanation\s*:?\s*\n([\s\S]*?)(?:Reference\s*:|Learning\s*Outcome\s*:|$)/i)?.[1] || '';
+  const explanation = joinExplanationLines(explRaw).slice(0, 5);
+
+  // Detect if this question needs an image that pdf-parse cannot extract
+  const has_image    = IMAGE_HINT_PATTERN.test(stem);
+  const image_needed = has_image; // flag for UI to show warning
+
+  return { stem, option_a, option_b, option_c, option_d, correct_option, explanation, has_image, image_needed };
+}
+
+function parsePYQText(text, source) {
+  const blocks = text.split(/\n\d+\.\s*Question\s*:?\s*\n/i).slice(1);
+  return blocks
+    .map(raw => parsePYQBlock(raw))
+    .filter(q => q.stem.length > 10 && q.option_a && q.correct_option)
+    .map(q => ({
+      ...q,
+      source:        source || 'FMGE PYQ',
+      subject:       detectSubject(q.stem),
+      subject_hint:  detectSubject(q.stem),
+      has_image:     q.has_image || false,
+      image_needed:  q.image_needed || false,
+      image_url:     null,
+      tags:          q.has_image ? ['pyq', 'image-needed'] : ['pyq'],
+      difficulty:    'medium'
+    }));
+}
+
+// POST /api/pyq/extract — parse one or more PYQ PDFs, return questions (no Gemini)
+app.post('/api/pyq/extract', pdfUpload.fields([
+  { name: 'pdfs', maxCount: 20 }
+]), async (req, res) => {
+  try {
+    const files = req.files?.pdfs || [];
+    if (!files.length) return res.status(400).json({ error: 'Upload at least one PDF' });
+
+    const allQuestions = [];
+    const fileResults  = [];
+
+    for (const file of files) {
+      try {
+        const data   = await pdfParse(file.buffer);
+        const source = file.originalname.replace(/\.pdf$/i, '');
+        const qs     = parsePYQText(data.text, source);
+        allQuestions.push(...qs);
+        fileResults.push({ file: file.originalname, extracted: qs.length });
+      } catch (err) {
+        fileResults.push({ file: file.originalname, extracted: 0, error: err.message });
+      }
+    }
+
+    res.json({ success: true, total: allQuestions.length, files: fileResults, questions: allQuestions });
+  } catch (err) {
+    console.error('PYQ extract error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Batch Routes ────────────────────────────────────────────────────────────
+
+// Helper: run one Gemini extraction call given image buffers
+async function extractFromImages(ai, qImgBuffer, qMime, aImgBuffer, aMime) {
+  const parts = [{ inlineData: { data: qImgBuffer.toString('base64'), mimeType: qMime } }];
+  if (aImgBuffer) {
+    parts.push({ inlineData: { data: aImgBuffer.toString('base64'), mimeType: aMime } });
+    parts.push({ text: INGEST_PROMPT_TWO });
+  } else {
+    parts.push({ text: INGEST_PROMPT_ONE });
+  }
+  const result = await ai.models.generateContent({
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    contents: [{ role: 'user', parts }],
+    config: { temperature: 0.1, maxOutputTokens: 8192 }
+  });
+  const data = parseGeminiJSON(result.text);
+  if (!Array.isArray(data.questions)) throw new Error('Invalid Gemini response structure');
+  return data;
+}
+
+// POST /api/batch/process-pairs — multiple screenshot pairs via SSE
+app.post('/api/batch/process-pairs', imageUpload.fields([
+  { name: 'qPages', maxCount: 100 },
+  { name: 'aPages', maxCount: 100 }
+]), async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (type, payload) => res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+  const hb = setInterval(() => res.write(': ping\n\n'), 20000);
+  res.on('close', () => clearInterval(hb));
+
+  try {
+    const qPages = req.files?.qPages || [];
+    const aPages = req.files?.aPages || [];
+    if (!qPages.length) { send('error', { message: 'No question page images uploaded' }); return res.end(); }
+    if (!process.env.GEMINI_API_KEY) { send('error', { message: 'GEMINI_API_KEY not set' }); return res.end(); }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const total = qPages.length;
+    send('start', { total });
+
+    for (let i = 0; i < total; i++) {
+      send('pair_start', { pair: i + 1, total, name: qPages[i].originalname });
+      try {
+        const aImg = aPages[i];
+        const data = await extractFromImages(
+          ai,
+          qPages[i].buffer, qPages[i].mimetype,
+          aImg?.buffer || null, aImg?.mimetype || null
+        );
+        send('pair_done', { pair: i + 1, total, questions: data.questions, page_notes: data.page_notes || '' });
+      } catch (err) {
+        send('pair_error', { pair: i + 1, total, error: err.message });
+      }
+      if (i < total - 1) await new Promise(r => setTimeout(r, 800)); // rate limit
+    }
+    send('complete', { total });
+  } catch (err) {
+    send('error', { message: err.message });
+  } finally {
+    clearInterval(hb);
+    res.end();
+  }
+});
+
+// Shared helper — render all pages of a PDF buffer → array of PNG buffers
+async function renderPdfPages(browser, pdfBuffer, scale) {
+  const page = await browser.newPage();
+  await page.goto(`http://localhost:${PORT}/pdf-renderer`, { waitUntil: 'networkidle0', timeout: 30000 });
+  await page.waitForFunction(() => window.__renderReady === true, { timeout: 30000 });
+  const base64 = pdfBuffer.toString('base64');
+  const pageCount = await page.evaluate(b64 => window.__loadPdf(b64), base64);
+  const pages = [];
+  for (let p = 1; p <= pageCount; p++) {
+    const dataUrl = await page.evaluate(
+      (pNum, sc) => window.__renderPage(pNum, sc), p, scale
+    );
+    pages.push(Buffer.from(dataUrl.split(',')[1], 'base64'));
+  }
+  await page.close();
+  return { pages, pageCount };
+}
+
+// POST /api/batch/render-pdf — render PDF pages via Puppeteer+pdfjs (SSE)
+app.post('/api/batch/render-pdf', pdfUpload.single('pdf'), async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (type, payload) => res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+  const hb = setInterval(() => res.write(': ping\n\n'), 20000);
+  res.on('close', () => clearInterval(hb));
+
+  let browser;
+  try {
+    if (!req.file) { send('error', { message: 'No PDF uploaded' }); return res.end(); }
+
+    const startPage = Math.max(1, parseInt(req.body.startPage) || 1);
+    const endPage   = parseInt(req.body.endPage) || null;
+
+    const jobId  = `job_${Date.now()}`;
+    const jobDir = path.join(TEMP_DIR, jobId);
+    fs.mkdirSync(jobDir, { recursive: true });
+
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
+    const page = await browser.newPage();
+    await page.goto(`http://localhost:${PORT}/pdf-renderer`, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.waitForFunction(() => window.__renderReady === true, { timeout: 30000 });
+
+    const base64pdf = req.file.buffer.toString('base64');
+    const pageCount = await page.evaluate(b64 => window.__loadPdf(b64), base64pdf);
+
+    const last  = Math.min(endPage || pageCount, pageCount);
+    const first = Math.min(startPage, last);
+    const total = last - first + 1;
+
+    send('ready', { jobId, pageCount, first, last, total });
+
+    for (let p = first; p <= last; p++) {
+      // thumbnail at 0.35 scale (for grid display)
+      const thumbUrl = await page.evaluate(
+        (pNum, sc) => window.__renderPage(pNum, sc), p, 0.35
+      );
+      // full-res at 1.8 scale (for Gemini extraction) — saved to disk
+      const fullUrl  = await page.evaluate(
+        (pNum, sc) => window.__renderPage(pNum, sc), p, 1.8
+      );
+      const fullBuf = Buffer.from(fullUrl.split(',')[1], 'base64');
+      fs.writeFileSync(path.join(jobDir, `p${String(p).padStart(4, '0')}.png`), fullBuf);
+
+      send('page', { jobId, pageNum: p, total: pageCount, pct: Math.round(((p - first + 1) / total) * 100), thumb: thumbUrl });
+    }
+
+    fs.writeFileSync(path.join(jobDir, 'meta.json'),
+      JSON.stringify({ pageCount, first, last, createdAt: new Date().toISOString() }));
+
+    send('complete', { jobId, pagesRendered: total });
+  } catch (err) {
+    send('error', { message: err.message });
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    clearInterval(hb);
+    res.end();
+  }
+});
+
+// POST /api/batch/process-from-pdf — process rendered PDF page pairs (SSE)
+app.post('/api/batch/process-from-pdf', express.json(), async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (type, payload) => res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+  const hb = setInterval(() => res.write(': ping\n\n'), 20000);
+  res.on('close', () => clearInterval(hb));
+
+  try {
+    const { jobId, pairs } = req.body;
+    if (!jobId || !Array.isArray(pairs) || !pairs.length) {
+      send('error', { message: 'jobId and pairs[] required' }); return res.end();
+    }
+    if (!process.env.GEMINI_API_KEY) { send('error', { message: 'GEMINI_API_KEY not set' }); return res.end(); }
+
+    const ai    = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const total = pairs.length;
+    send('start', { total });
+
+    for (let i = 0; i < total; i++) {
+      const { qPage, aPage } = pairs[i];
+      send('pair_start', { pair: i + 1, total, qPage, aPage });
+
+      try {
+        const qPath = path.join(TEMP_DIR, jobId, `p${String(qPage).padStart(4, '0')}.png`);
+        const aPath = aPage ? path.join(TEMP_DIR, jobId, `p${String(aPage).padStart(4, '0')}.png`) : null;
+        if (!fs.existsSync(qPath)) throw new Error(`Page ${qPage} image not found — render the PDF first`);
+
+        const qBuf = fs.readFileSync(qPath);
+        const aBuf = (aPath && fs.existsSync(aPath)) ? fs.readFileSync(aPath) : null;
+        const data = await extractFromImages(ai, qBuf, 'image/png', aBuf, 'image/png');
+        send('pair_done', { pair: i + 1, total, qPage, aPage, questions: data.questions });
+      } catch (err) {
+        send('pair_error', { pair: i + 1, total, qPage, aPage, error: err.message });
+      }
+      if (i < total - 1) await new Promise(r => setTimeout(r, 800));
+    }
+    send('complete', { total });
+  } catch (err) {
+    send('error', { message: err.message });
+  } finally {
+    clearInterval(hb);
+    res.end();
+  }
+});
+
+// POST /api/batch/process-dual-pdf — two PDFs → render → pair → extract (SSE)
+app.post('/api/batch/process-dual-pdf', pdfUpload.fields([
+  { name: 'questionsPdf', maxCount: 1 },
+  { name: 'answersPdf',   maxCount: 1 }
+]), async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (type, payload) => res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+  const hb = setInterval(() => res.write(': ping\n\n'), 20000);
+  res.on('close', () => clearInterval(hb));
+
+  let browser;
+  try {
+    const qPdf = req.files?.questionsPdf?.[0];
+    const aPdf = req.files?.answersPdf?.[0];
+
+    if (!qPdf) { send('error', { message: 'Questions PDF is required' }); return res.end(); }
+    if (!process.env.GEMINI_API_KEY) { send('error', { message: 'GEMINI_API_KEY not set' }); return res.end(); }
+
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
+
+    // ── Render question pages ──────────────────────────────────────────────
+    send('status', { message: 'Rendering question PDF pages…', step: 1, totalSteps: 3 });
+    const { pages: qPages, pageCount: qCount } = await renderPdfPages(browser, qPdf.buffer, 1.8);
+    send('status', { message: `Questions PDF: ${qCount} pages rendered`, step: 1, totalSteps: 3 });
+
+    // ── Render answer pages ────────────────────────────────────────────────
+    let aPages = [];
+    if (aPdf) {
+      send('status', { message: 'Rendering answer PDF pages…', step: 2, totalSteps: 3 });
+      const { pages, pageCount: aCount } = await renderPdfPages(browser, aPdf.buffer, 1.8);
+      aPages = pages;
+      send('status', { message: `Answers PDF: ${aCount} pages rendered`, step: 2, totalSteps: 3 });
+    }
+
+    await browser.close();
+    browser = null;
+
+    // ── Pair and extract ───────────────────────────────────────────────────
+    const total = qPages.length;
+    send('start', { total, qPages: qPages.length, aPages: aPages.length, step: 3, totalSteps: 3 });
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    for (let i = 0; i < total; i++) {
+      send('pair_start', { pair: i + 1, total });
+      try {
+        const data = await extractFromImages(
+          ai,
+          qPages[i], 'image/png',
+          aPages[i] || null, 'image/png'
+        );
+        send('pair_done', { pair: i + 1, total, questions: data.questions, page_notes: data.page_notes || '' });
+      } catch (err) {
+        send('pair_error', { pair: i + 1, total, error: err.message });
+      }
+      if (i < total - 1) await new Promise(r => setTimeout(r, 800));
+    }
+
+    send('complete', { total });
+  } catch (err) {
+    console.error('Dual PDF error:', err.message);
+    send('error', { message: err.message });
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    clearInterval(hb);
+    res.end();
+  }
+});
+
+// GET /api/batch/thumb/:jobId/:pageNum — serve thumbnail from temp
+app.get('/api/batch/thumb/:jobId/:pageNum', (req, res) => {
+  const f = path.join(TEMP_DIR, req.params.jobId, `p${String(parseInt(req.params.pageNum)).padStart(4, '0')}.png`);
+  if (!fs.existsSync(f)) return res.status(404).end();
+  res.setHeader('Content-Type', 'image/png');
+  res.send(fs.readFileSync(f));
+});
+
+// ─── Review Routes ────────────────────────────────────────────────────────────
+
+const DECISIONS_PATH = path.join(DATA_DIR, 'review_decisions.json');
+
+// GET /api/review/questions?subject=&page=&limit=&search=&difficulty=&db=premium|all
+// Returns paginated slice + saved decisions for that slice
+app.get('/api/review/questions', (req, res) => {
+  try {
+    const dbFile  = req.query.db === 'all' ? 'questions.json' : 'questions_premium.json';
+    const dbPath  = path.join(DATA_DIR, dbFile);
+    const decPath = path.join(DATA_DIR, `review_decisions_${req.query.db === 'all' ? 'all' : 'premium'}.json`);
+    if (!fs.existsSync(dbPath)) return res.json({ questions: [], decisions: {}, total: 0, subjects: [] });
+
+    const allQ     = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+    let decisions  = {};
+    if (fs.existsSync(decPath)) {
+      try { decisions = JSON.parse(fs.readFileSync(decPath, 'utf-8')); } catch {}
+    }
+
+    const subject    = req.query.subject    || '';
+    const difficulty = req.query.difficulty || '';
+    const search     = (req.query.search    || '').toLowerCase();
+    const page       = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit      = Math.min(100, Math.max(10, parseInt(req.query.limit) || 50));
+
+    // Build subject list with counts
+    const subjectCounts = {};
+    allQ.forEach(q => { const s = q.subject||'unknown'; subjectCounts[s] = (subjectCounts[s]||0)+1; });
+
+    // Build difficulty counts
+    const diffCounts = { easy: 0, medium: 0, hard: 0 };
+    allQ.forEach(q => { const d = q.difficulty||'medium'; if (diffCounts[d] !== undefined) diffCounts[d]++; });
+
+    // Filter
+    let filtered = allQ;
+    if (subject)    filtered = filtered.filter(q => (q.subject||'unknown') === subject);
+    if (difficulty) filtered = filtered.filter(q => (q.difficulty||'medium') === difficulty);
+    if (search)     filtered = filtered.filter(q => (q.stem||'').toLowerCase().includes(search));
+
+    const total  = filtered.length;
+    const start  = (page - 1) * limit;
+    const slice  = filtered.slice(start, start + limit);
+
+    // Only send decisions for this slice (keeps response small)
+    const sliceDecisions = {};
+    slice.forEach(q => { if (decisions[q.id]) sliceDecisions[q.id] = decisions[q.id]; });
+
+    // Summary counts
+    const kept     = Object.values(decisions).filter(v => v === 'kept').length;
+    const rejected = Object.values(decisions).filter(v => v === 'rejected').length;
+
+    res.json({
+      questions: slice,
+      decisions: sliceDecisions,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      subjects: Object.entries(subjectCounts).sort((a,b) => b[1]-a[1]).map(([s,c]) => ({ subject: s, count: c })),
+      difficulty_counts: diffCounts,
+      summary: { total: allQ.length, kept, rejected, pending: allQ.length - kept - rejected }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/review/save — persist decisions map { [id]: 'kept'|'rejected'|'pending', db: 'premium'|'all' }
+app.post('/api/review/save', (req, res) => {
+  try {
+    const { decisions, db } = req.body;
+    if (!decisions || typeof decisions !== 'object')
+      return res.status(400).json({ error: 'decisions object required' });
+
+    const decPath = path.join(DATA_DIR, db === 'all' ? 'review_decisions_all.json' : 'review_decisions_premium.json');
+
+    // Merge with existing decisions (don't overwrite unreviewed)
+    let existing = {};
+    if (fs.existsSync(decPath)) {
+      try { existing = JSON.parse(fs.readFileSync(decPath, 'utf-8')); } catch {}
+    }
+    const merged = { ...existing, ...decisions };
+    // Remove 'pending' keys to keep file lean
+    Object.keys(merged).forEach(k => { if (merged[k] === 'pending') delete merged[k]; });
+    fs.writeFileSync(decPath, JSON.stringify(merged));
+
+    const kept     = Object.values(merged).filter(v => v === 'kept').length;
+    const rejected = Object.values(merged).filter(v => v === 'rejected').length;
+    res.json({ success: true, kept, rejected, total: Object.keys(merged).length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/review/difficulty — update difficulty for a batch of questions { changes: { id: 'easy'|'medium'|'hard' }, db: 'premium'|'all' }
+app.post('/api/review/difficulty', (req, res) => {
+  try {
+    const { changes, db } = req.body;
+    if (!changes || typeof changes !== 'object')
+      return res.status(400).json({ error: 'changes object required' });
+
+    const dbFile  = db === 'all' ? 'questions.json' : 'questions_premium.json';
+    const dbPath  = path.join(DATA_DIR, dbFile);
+    const questions = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+    let updated = 0;
+    const changeMap = new Map(Object.entries(changes));
+    const result = questions.map(q => {
+      if (changeMap.has(q.id)) { updated++; return { ...q, difficulty: changeMap.get(q.id) }; }
+      return q;
+    });
+    fs.writeFileSync(dbPath, JSON.stringify(result, null, 2));
+    res.json({ success: true, updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/review/apply — write a new questions file keeping only 'kept' questions
+app.post('/api/review/apply', (req, res) => {
+  try {
+    const { db } = req.body || {};
+    const dbFile  = db === 'all' ? 'questions.json' : 'questions_premium.json';
+    const decFile = db === 'all' ? 'review_decisions_all.json' : 'review_decisions_premium.json';
+    const dbPath  = path.join(DATA_DIR, dbFile);
+    const decPath = path.join(DATA_DIR, decFile);
+
+    if (!fs.existsSync(dbPath))  return res.status(400).json({ error: `${dbFile} not found` });
+    if (!fs.existsSync(decPath)) return res.status(400).json({ error: 'No decisions saved yet' });
+
+    const questions = JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+    const decisions = JSON.parse(fs.readFileSync(decPath, 'utf-8'));
+
+    const kept = questions.filter(q => decisions[q.id] === 'kept');
+
+    // Backup original
+    fs.writeFileSync(path.join(DATA_DIR, 'questions_pre_review.json'), JSON.stringify(questions));
+    fs.writeFileSync(dbPath, JSON.stringify(kept, null, 2));
+
+    res.json({ success: true, original: questions.length, kept: kept.length, removed: questions.length - kept.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

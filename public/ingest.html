@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Question Bank Ingestion — FMGE Admin</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+
+  /* ── Top bar ── */
+  .topbar{background:#0f3460;color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between}
+  .topbar h1{font-size:15pt;font-weight:700;letter-spacing:-0.3px}
+  .topbar a{color:#48cae4;text-decoration:none;font-size:10pt}
+  .stats-pill{display:flex;gap:18px}
+  .stat{text-align:center}
+  .stat .num{font-size:18pt;font-weight:800;color:#48cae4;line-height:1}
+  .stat .lbl{font-size:8pt;color:#adb5bd;text-transform:uppercase;letter-spacing:0.5px}
+
+  /* ── Layout ── */
+  .container{max-width:1100px;margin:0 auto;padding:24px 20px}
+
+  /* ── Upload panel ── */
+  .upload-panel{background:#fff;border-radius:12px;padding:28px;margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+  .upload-panel h2{font-size:12pt;font-weight:700;color:#0f3460;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+  .upload-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}
+  .drop-zone{border:2.5px dashed #c8d8f0;border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:.2s;background:#f8fbff;position:relative;outline:none}
+  .drop-zone:hover,.drop-zone.drag{border-color:#0f3460;background:#eef3fc}
+  .drop-zone.has-file{border-color:#28a745;background:#f0fff4;border-style:solid}
+  .drop-zone.paste-focus{border-color:#7c3aed;border-style:solid;background:#f5f0ff;box-shadow:0 0 0 3px rgba(124,58,237,.15)}
+  .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .drop-zone .icon{font-size:32px;margin-bottom:8px}
+  .drop-zone .label{font-size:11pt;font-weight:600;color:#0f3460;margin-bottom:4px}
+  .drop-zone .sub{font-size:9pt;color:#6c757d}
+  .drop-zone .fname{font-size:9.5pt;color:#155724;font-weight:600;margin-top:6px}
+  .drop-zone img.preview{max-width:100%;max-height:180px;object-fit:contain;margin-top:10px;border-radius:6px;border:1px solid #dee2e6}
+  .paste-hint{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:4px 10px;border-radius:6px;font-size:8.5pt;font-weight:600;background:#ede9fe;color:#7c3aed;border:1px solid #ddd6fe}
+  .paste-focus .paste-hint{background:#7c3aed;color:#fff;border-color:#7c3aed}
+  .paste-focus .label{color:#7c3aed}
+  .paste-focus .icon::after{content:' 📋'}
+  kbd{display:inline-block;padding:2px 6px;border:1.5px solid currentColor;border-radius:4px;font-family:monospace;font-size:8pt;line-height:1.4}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:7px;border:none;cursor:pointer;font-size:10.5pt;font-weight:600;transition:.2s}
+  .btn-primary{background:#0f3460;color:#fff}
+  .btn-primary:hover:not(:disabled){background:#1a4a7a}
+  .btn-success{background:#28a745;color:#fff}
+  .btn-success:hover:not(:disabled){background:#218838}
+  .btn-outline{background:#fff;color:#0f3460;border:2px solid #0f3460}
+  .btn-outline:hover{background:#f0f4ff}
+  .btn-danger{background:#dc3545;color:#fff}
+  .btn-sm{padding:5px 12px;font-size:9pt}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  .action-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .note{font-size:9pt;color:#6c757d;margin-left:auto}
+
+  /* ── Progress ── */
+  .progress-bar{height:6px;background:#e9ecef;border-radius:3px;overflow:hidden;margin:12px 0;display:none}
+  .progress-bar .fill{height:100%;background:#0f3460;transition:width .3s;border-radius:3px}
+
+  /* ── Alert ── */
+  .alert{padding:12px 16px;border-radius:8px;font-size:10pt;margin-bottom:16px;display:none}
+  .alert-success{background:#d4edda;border:1px solid #c3e6cb;color:#155724}
+  .alert-error{background:#f8d7da;border:1px solid #f5c6cb;color:#721c24}
+  .alert-info{background:#d1ecf1;border:1px solid #bee5eb;color:#0c5460}
+
+  /* ── Review panel ── */
+  .review-panel{display:none}
+  .review-header{background:#fff;border-radius:12px;padding:20px 28px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.07);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .review-header h2{font-size:12pt;font-weight:700;color:#0f3460;flex:1}
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:9pt;font-weight:600}
+  .badge-blue{background:#dbeafe;color:#1e3a8a}
+  .badge-green{background:#d4edda;color:#155724}
+  .badge-orange{background:#fff3cd;color:#856404}
+  .badge-red{background:#f8d7da;color:#721c24}
+
+  /* ── Question cards ── */
+  .q-card{background:#fff;border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid #0f3460}
+  .q-card.approved{border-left-color:#28a745}
+  .q-card.rejected{border-left-color:#dc3545;opacity:.6}
+  .q-card.flagged{border-left-color:#ffc107}
+
+  .q-card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .q-num-badge{background:#0f3460;color:#fff;padding:4px 12px;border-radius:6px;font-weight:700;font-size:10.5pt;white-space:nowrap}
+  .q-status-btns{display:flex;gap:6px;margin-left:auto}
+  .status-btn{padding:5px 14px;border-radius:6px;border:1.5px solid;font-size:9pt;font-weight:600;cursor:pointer;transition:.15s}
+  .status-btn.approve{border-color:#28a745;color:#28a745;background:#fff}
+  .status-btn.approve.active,
+  .status-btn.approve:hover{background:#28a745;color:#fff}
+  .status-btn.reject{border-color:#dc3545;color:#dc3545;background:#fff}
+  .status-btn.reject.active,
+  .status-btn.reject:hover{background:#dc3545;color:#fff}
+  .status-btn.flag{border-color:#ffc107;color:#856404;background:#fff}
+  .status-btn.flag.active,
+  .status-btn.flag:hover{background:#ffc107;color:#333}
+
+  .field-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:14px}
+  .field-row{display:grid;grid-template-columns:100px 1fr;gap:10px;align-items:start}
+  .field-label{font-size:9pt;font-weight:700;color:#6c757d;text-transform:uppercase;letter-spacing:0.4px;padding-top:9px}
+  .field-input{width:100%;padding:8px 12px;border:1.5px solid #dee2e6;border-radius:7px;font-size:10pt;font-family:inherit;resize:vertical;transition:.2s;background:#fafbfc}
+  .field-input:focus{outline:none;border-color:#0f3460;background:#fff}
+  textarea.field-input{min-height:60px}
+
+  .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .option-row{display:flex;align-items:center;gap:8px}
+  .option-lbl{font-weight:700;color:#0f3460;font-size:10pt;width:22px;flex-shrink:0}
+  .option-input{flex:1;padding:7px 10px;border:1.5px solid #dee2e6;border-radius:6px;font-size:10pt;font-family:inherit;transition:.2s}
+  .option-input:focus{outline:none;border-color:#0f3460}
+  .option-input.correct-opt{border-color:#28a745;background:#f0fff4}
+
+  .meta-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .meta-group label{font-size:8.5pt;font-weight:700;color:#6c757d;text-transform:uppercase;display:block;margin-bottom:4px}
+  select.field-input{cursor:pointer}
+
+  .correct-selector{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .correct-selector span{font-size:9.5pt;font-weight:700;color:#6c757d;margin-right:4px}
+  .correct-radio{display:none}
+  .correct-radio-lbl{padding:5px 14px;border-radius:6px;border:1.5px solid #dee2e6;font-size:10pt;font-weight:600;cursor:pointer;transition:.15s;color:#6c757d}
+  .correct-radio:checked + .correct-radio-lbl{background:#0f3460;color:#fff;border-color:#0f3460}
+
+  /* ── Explanation bullet list ── */
+  .expl-list{display:flex;flex-direction:column;gap:6px}
+  .expl-point{display:flex;align-items:flex-start;gap:8px}
+  .expl-point::before{content:'•';color:#0f3460;font-size:14pt;line-height:1.6;flex-shrink:0}
+  .expl-point textarea{flex:1;padding:7px 10px;border:1.5px solid #dee2e6;border-radius:6px;font-size:10pt;font-family:inherit;resize:vertical;min-height:42px;transition:.2s;background:#fafbfc;line-height:1.5}
+  .expl-point textarea:focus{outline:none;border-color:#0f3460;background:#fff}
+  .expl-del{background:none;border:none;color:#adb5bd;font-size:14pt;cursor:pointer;padding:4px 6px;line-height:1;border-radius:4px;flex-shrink:0;margin-top:4px}
+  .expl-del:hover{color:#dc3545;background:#fdecea}
+
+  .img-section{background:#f8fbff;border:1.5px dashed #c8d8f0;border-radius:8px;padding:14px;margin-bottom:14px}
+  .img-section h4{font-size:9pt;font-weight:700;color:#0f3460;text-transform:uppercase;margin-bottom:10px}
+  .img-upload-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .img-preview{max-width:200px;max-height:140px;object-fit:contain;border-radius:6px;border:1px solid #dee2e6;display:none}
+  .img-url-display{font-size:8.5pt;color:#28a745;font-family:monospace;word-break:break-all}
+
+  /* ── Save bar (sticky) ── */
+  .save-bar{position:sticky;bottom:0;background:#fff;border-top:2px solid #dee2e6;padding:14px 28px;display:none;align-items:center;gap:12px;box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:100;flex-wrap:wrap}
+  .save-bar .save-info{font-size:10pt;color:#495057;flex:1}
+  .save-bar .save-info strong{color:#0f3460}
+</style>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<div class="topbar">
+  <div>
+    <h1>Question Bank Ingestion</h1>
+    <div style="font-size:9pt;color:#adb5bd;margin-top:2px">Upload question + answer page → review → save to bank</div>
+  </div>
+  <div class="stats-pill" id="statsBar">
+    <div class="stat"><div class="num" id="statTotal">—</div><div class="lbl">Total Qs</div></div>
+    <div class="stat"><div class="num" id="statImg">—</div><div class="lbl">With Images</div></div>
+  </div>
+  <a href="/">← Back to Generator</a>
+</div>
+
+<div class="container">
+
+  <!-- ── Alert ── -->
+  <div class="alert" id="alert"></div>
+
+  <!-- ── Upload panel ── -->
+  <div class="upload-panel">
+    <h2>📄 Upload Pages</h2>
+
+    <div class="upload-row">
+      <!-- Question page -->
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f3460;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px">Question Page (required)</div>
+        <div class="drop-zone" id="dropQ" tabindex="0"
+          onclick="focusZone('Q')"
+          onfocus="focusZone('Q')"
+          onblur="blurZone('Q')">
+          <input type="file" id="fileQ" accept=".jpg,.jpeg,.png,.webp" onchange="handleFile('Q',this)" onclick="event.stopPropagation()">
+          <div class="icon">📷</div>
+          <div class="label">Question Page</div>
+          <div class="sub">JPG / PNG — the page with stems &amp; options</div>
+          <div class="paste-hint"><kbd>Ctrl+V</kbd> to paste screenshot &nbsp;·&nbsp; or click to browse</div>
+          <div class="fname" id="fnameQ"></div>
+          <img class="preview" id="previewQ" alt="">
+        </div>
+      </div>
+
+      <!-- Answer page -->
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f3460;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px">Answer/Explanation Page (optional)</div>
+        <div class="drop-zone" id="dropA" tabindex="0"
+          onclick="focusZone('A')"
+          onfocus="focusZone('A')"
+          onblur="blurZone('A')">
+          <input type="file" id="fileA" accept=".jpg,.jpeg,.png,.webp" onchange="handleFile('A',this)" onclick="event.stopPropagation()">
+          <div class="icon">📋</div>
+          <div class="label">Answer Page</div>
+          <div class="sub">JPG / PNG — the page with answers &amp; explanations</div>
+          <div class="paste-hint"><kbd>Ctrl+V</kbd> to paste screenshot &nbsp;·&nbsp; or click to browse</div>
+          <div class="fname" id="fnameA"></div>
+          <img class="preview" id="previewA" alt="">
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-bar" id="progressBar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" id="extractBtn" onclick="extractQuestions()" disabled>
+        Extract Questions
+      </button>
+      <button class="btn btn-outline" onclick="resetAll()">Reset</button>
+      <span class="note" id="extractNote">Upload at least the question page to continue</span>
+    </div>
+  </div>
+
+  <!-- ── Review panel ── -->
+  <div class="review-panel" id="reviewPanel">
+    <div class="review-header">
+      <h2>Review Extracted Questions</h2>
+      <span class="badge badge-blue" id="totalBadge">0 extracted</span>
+      <span class="badge badge-green" id="approvedBadge">0 approved</span>
+      <span class="badge badge-orange" id="flaggedBadge">0 flagged</span>
+      <button class="btn btn-outline btn-sm" onclick="approveAll()">Approve All</button>
+      <button class="btn btn-outline btn-sm" onclick="expandAll()">Expand All</button>
+    </div>
+
+    <div id="cardsContainer"></div>
+  </div>
+
+</div>
+
+<!-- ── Sticky save bar ── -->
+<div class="save-bar" id="saveBar">
+  <div class="save-info">
+    <strong id="saveCount">0</strong> questions approved and ready to save
+    <span id="dupWarning" style="color:#dc3545;margin-left:12px;display:none">⚠ Duplicates will be skipped automatically</span>
+  </div>
+  <button class="btn btn-outline btn-sm" onclick="downloadJSON()">Download JSON</button>
+  <button class="btn btn-success" id="saveBtn" onclick="saveQuestions()">Save to Question Bank</button>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let questions = [];   // extracted from Gemini
+let statuses  = {};   // q_num → 'approved' | 'rejected' | 'flagged' | 'pending'
+let imageUrls = {};   // q_num → uploaded image url
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadStats();
+setupPaste();
+
+function loadStats() {
+  fetch('/api/ingest/stats')
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('statTotal').textContent = d.total;
+      document.getElementById('statImg').textContent   = d.has_image;
+    })
+    .catch(() => {});
+}
+
+// ── Paste & focus ─────────────────────────────────────────────────────────────
+let activeZone = null; // 'Q' | 'A' | null
+
+function focusZone(which) {
+  // Toggle: clicking the already-active zone opens file browser
+  if (activeZone === which) {
+    document.getElementById(`file${which}`).click();
+    return;
+  }
+  activeZone = which;
+  ['Q','A'].forEach(w => {
+    document.getElementById(`drop${w}`).classList.toggle('paste-focus', w === which);
+  });
+}
+
+function blurZone(which) {
+  // Small delay so clicking the file input inside the zone doesn't clear focus
+  setTimeout(() => {
+    if (activeZone === which) {
+      activeZone = null;
+      document.getElementById(`drop${which}`).classList.remove('paste-focus');
+    }
+  }, 200);
+}
+
+function setupPaste() {
+  document.addEventListener('paste', e => {
+    // Don't intercept paste inside text inputs / textareas
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    const items = Array.from(e.clipboardData?.items || []);
+    const imgItem = items.find(i => i.type.startsWith('image/'));
+    if (!imgItem) return;
+
+    e.preventDefault();
+    const file = imgItem.getAsFile();
+    if (!file) return;
+
+    // Decide target zone: active → else first empty → else Q
+    let target = activeZone;
+    if (!target) {
+      const qFilled = !!document.getElementById('fileQ').files[0];
+      const aFilled = !!document.getElementById('fileA').files[0];
+      if (!qFilled)       target = 'Q';
+      else if (!aFilled)  target = 'A';
+      else                target = 'Q'; // overwrite Q if both filled
+    }
+
+    injectFile(target, file);
+    showPasteFlash(target);
+  });
+}
+
+function injectFile(which, file) {
+  // Give the pasted screenshot a readable name
+  const ext  = file.type.split('/')[1] || 'png';
+  const name = `screenshot_${which === 'Q' ? 'question' : 'answer'}_${Date.now()}.${ext}`;
+  const named = new File([file], name, { type: file.type });
+
+  // Inject into the hidden file input via DataTransfer
+  const dt = new DataTransfer();
+  dt.items.add(named);
+  document.getElementById(`file${which}`).files = dt.files;
+  handleFile(which, { files: dt.files });
+
+  // Shift focus to next empty zone automatically
+  const other = which === 'Q' ? 'A' : 'Q';
+  const otherFilled = !!document.getElementById(`file${other}`).files[0];
+  if (!otherFilled) {
+    activeZone = other;
+    ['Q','A'].forEach(w =>
+      document.getElementById(`drop${w}`).classList.toggle('paste-focus', w === other)
+    );
+  } else {
+    activeZone = null;
+    ['Q','A'].forEach(w => document.getElementById(`drop${w}`).classList.remove('paste-focus'));
+  }
+}
+
+function showPasteFlash(which) {
+  const zone = document.getElementById(`drop${which}`);
+  zone.style.transition = 'background .15s';
+  zone.style.background = '#ede9fe';
+  setTimeout(() => { zone.style.background = ''; }, 400);
+}
+
+// ── File handling ─────────────────────────────────────────────────────────────
+function handleFile(which, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const drop    = document.getElementById(`drop${which}`);
+  const fname   = document.getElementById(`fname${which}`);
+  const preview = document.getElementById(`preview${which}`);
+
+  drop.classList.add('has-file');
+  drop.classList.remove('paste-focus');
+  fname.textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    preview.src   = e.target.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+
+  // Enable extract if question page is set
+  if (document.getElementById('fileQ').files[0]) {
+    document.getElementById('extractBtn').disabled = false;
+    document.getElementById('extractNote').textContent = 'Ready — click Extract or paste the answer page';
+  }
+}
+
+// Drag-and-drop
+['Q','A'].forEach(w => {
+  const zone = document.getElementById(`drop${w}`);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const input = document.getElementById(`file${w}`);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    handleFile(w, input);
+  });
+});
+
+// ── Extract ───────────────────────────────────────────────────────────────────
+async function extractQuestions() {
+  const qFile = document.getElementById('fileQ').files[0];
+  if (!qFile) return showAlert('Upload the question page first', 'error');
+
+  const aFile = document.getElementById('fileA').files[0];
+
+  setProgress(true, 30);
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('extractNote').textContent = 'Sending to Gemini Vision…';
+  hideAlert();
+  document.getElementById('reviewPanel').style.display = 'none';
+  document.getElementById('saveBar').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('questionPage', qFile);
+  if (aFile) fd.append('answerPage', aFile);
+
+  try {
+    setProgress(true, 60);
+    const resp = await fetch('/api/ingest/extract', { method: 'POST', body: fd });
+    const data = await resp.json();
+
+    setProgress(true, 100);
+
+    if (!resp.ok || !data.success) {
+      showAlert(data.error || 'Extraction failed', 'error');
+      return;
+    }
+
+    questions = data.questions;
+    statuses  = {};
+    imageUrls = {};
+
+    // Auto-approve questions that have all required fields
+    questions.forEach(q => {
+      const complete = q.stem && q.option_a && q.option_b && q.option_c && q.option_d && q.correct_option;
+      statuses[q.q_num] = complete ? 'approved' : 'flagged';
+    });
+
+    showAlert(`Extracted ${data.total} questions. ${data.page_notes}`, 'info');
+    renderCards();
+
+  } catch (err) {
+    showAlert('Network error: ' + err.message, 'error');
+  } finally {
+    setProgress(false);
+    document.getElementById('extractBtn').disabled = false;
+    document.getElementById('extractNote').textContent = 'Done';
+  }
+}
+
+// ── Render cards ──────────────────────────────────────────────────────────────
+const SUBJECTS = ['anatomy','physiology','biochemistry','pathology','pharmacology','medicine',
+  'surgery','obgy','paediatrics','psychiatry','ophthalmology','ent','dermatology','radiology','community_medicine'];
+const DIFFICULTIES = ['easy','medium','hard'];
+
+function renderCards() {
+  const container = document.getElementById('cardsContainer');
+  container.innerHTML = '';
+
+  questions.forEach(q => {
+    const status = statuses[q.q_num] || 'pending';
+    const card = document.createElement('div');
+    card.className = `q-card ${status}`;
+    card.id = `card_${q.q_num}`;
+
+    const subjectOptions = SUBJECTS.map(s =>
+      `<option value="${s}" ${(q.subject_hint===s||q.subject===s)?'selected':''}>${s}</option>`
+    ).join('');
+
+    const diffOptions = DIFFICULTIES.map(d =>
+      `<option value="${d}" ${q.difficulty===d?'selected':''}>${d}</option>`
+    ).join('');
+
+    const correctOpts = ['a','b','c','d'].map(o =>
+      `<input type="radio" name="correct_${q.q_num}" id="cr_${q.q_num}_${o}" class="correct-radio"
+        value="${o}" ${q.correct_option===o?'checked':''} onchange="syncCorrect(${q.q_num})">
+       <label class="correct-radio-lbl" for="cr_${q.q_num}_${o}">${o.toUpperCase()}</label>`
+    ).join('');
+
+    const imgSection = q.has_image ? `
+      <div class="img-section">
+        <h4>Anatomy Image Required</h4>
+        <div style="font-size:9pt;color:#6c757d;margin-bottom:8px">${q.image_description||'Diagram referenced in question'}</div>
+        <div class="img-upload-row">
+          <input type="file" accept=".jpg,.jpeg,.png,.webp" id="imgFile_${q.q_num}"
+            onchange="uploadQuestionImage(${q.q_num}, this)" style="font-size:9pt">
+          <img class="img-preview" id="imgPreview_${q.q_num}" alt="">
+          <span class="img-url-display" id="imgUrl_${q.q_num}"></span>
+        </div>
+      </div>` : '';
+
+    card.innerHTML = `
+      <div class="q-card-header">
+        <div class="q-num-badge">Q${q.q_num}</div>
+        <span class="badge ${status==='approved'?'badge-green':status==='flagged'?'badge-orange':'badge-red'}" id="statusBadge_${q.q_num}">
+          ${status}
+        </span>
+        ${!q.correct_option ? '<span class="badge badge-orange">⚠ No answer</span>' : ''}
+        ${q.has_image ? '<span class="badge badge-blue">🖼 Has image</span>' : ''}
+        <div class="q-status-btns">
+          <button class="status-btn approve ${status==='approved'?'active':''}" onclick="setStatus(${q.q_num},'approved')">✓ Approve</button>
+          <button class="status-btn flag ${status==='flagged'?'active':''}" onclick="setStatus(${q.q_num},'flagged')">⚑ Flag</button>
+          <button class="status-btn reject ${status==='rejected'?'active':''}" onclick="setStatus(${q.q_num},'rejected')">✕ Reject</button>
+        </div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field-row">
+          <div class="field-label">Question</div>
+          <textarea class="field-input" id="stem_${q.q_num}" rows="3" oninput="syncField(${q.q_num},'stem')">${esc(q.stem||'')}</textarea>
+        </div>
+      </div>
+
+      <div class="options-grid">
+        ${['a','b','c','d'].map(o => `
+          <div class="option-row">
+            <span class="option-lbl">${o.toUpperCase()}.</span>
+            <input class="option-input ${q.correct_option===o?'correct-opt':''}" id="opt_${q.q_num}_${o}"
+              type="text" value="${esc(q['option_'+o]||'')}"
+              oninput="syncOption(${q.q_num},'${o}')" placeholder="Option ${o.toUpperCase()}">
+          </div>`).join('')}
+      </div>
+
+      <div class="correct-selector">
+        <span>Correct answer:</span>
+        ${correctOpts}
+      </div>
+
+      <div class="field-grid">
+        <div class="field-row">
+          <div class="field-label">Explanation</div>
+          <div style="flex:1">
+            <div id="explList_${q.q_num}" class="expl-list"></div>
+            <button type="button" class="btn btn-outline btn-sm" style="margin-top:6px" onclick="addExplPoint(${q.q_num})">+ Add point</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Source</div>
+          <input class="field-input" id="src_${q.q_num}" type="text" value="${esc(q.source||'')}" oninput="syncField(${q.q_num},'source')">
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <div class="meta-group">
+          <label>Subject</label>
+          <select class="field-input" id="subj_${q.q_num}" onchange="syncField(${q.q_num},'subject')">
+            ${subjectOptions}
+          </select>
+        </div>
+        <div class="meta-group">
+          <label>Topic (optional)</label>
+          <input class="field-input" id="topic_${q.q_num}" type="text" value="${esc(q.topic||'')}" oninput="syncField(${q.q_num},'topic')" placeholder="e.g. Cardiology">
+        </div>
+        <div class="meta-group">
+          <label>Difficulty</label>
+          <select class="field-input" id="diff_${q.q_num}" onchange="syncField(${q.q_num},'difficulty')">
+            ${diffOptions}
+          </select>
+        </div>
+        <div class="meta-group">
+          <label>Tags (comma-sep)</label>
+          <input class="field-input" id="tags_${q.q_num}" type="text" value="${(q.tags||[]).join(', ')}" oninput="syncTags(${q.q_num})" placeholder="high-yield, repeat">
+        </div>
+      </div>
+
+      ${imgSection}
+    `;
+
+    container.appendChild(card);
+    renderExplList(q.q_num);
+  });
+
+  document.getElementById('reviewPanel').style.display = 'block';
+  updateCounts();
+}
+
+// ── Field sync ────────────────────────────────────────────────────────────────
+function syncField(qNum, field) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q) return;
+  const el = document.getElementById(`${field==='subject'?'subj':field==='difficulty'?'diff':field==='explanation'?'expl':field==='source'?'src':field==='topic'?'topic':field}_${qNum}`);
+  if (el) q[field] = el.value;
+}
+
+function syncOption(qNum, opt) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q) return;
+  q[`option_${opt}`] = document.getElementById(`opt_${qNum}_${opt}`).value;
+  // Update correct-opt highlight
+  ['a','b','c','d'].forEach(o => {
+    const el = document.getElementById(`opt_${qNum}_${o}`);
+    if (el) el.classList.toggle('correct-opt', q.correct_option === o);
+  });
+}
+
+function syncCorrect(qNum) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q) return;
+  const checked = document.querySelector(`input[name="correct_${qNum}"]:checked`);
+  q.correct_option = checked?.value || null;
+  // Update option highlights
+  ['a','b','c','d'].forEach(o => {
+    const el = document.getElementById(`opt_${qNum}_${o}`);
+    if (el) el.classList.toggle('correct-opt', q.correct_option === o);
+  });
+}
+
+function syncTags(qNum) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q) return;
+  const val = document.getElementById(`tags_${qNum}`)?.value || '';
+  q.tags = val.split(',').map(t => t.trim()).filter(Boolean);
+}
+
+// ── Explanation bullet points ──────────────────────────────────────────────────
+function renderExplList(qNum) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q) return;
+  const list = document.getElementById(`explList_${qNum}`);
+  if (!list) return;
+  const points = Array.isArray(q.explanation) ? q.explanation : (q.explanation ? [q.explanation] : []);
+  list.innerHTML = '';
+  points.forEach((pt, idx) => {
+    const row = document.createElement('div');
+    row.className = 'expl-point';
+    row.innerHTML = `
+      <textarea rows="2" oninput="syncExplPoint(${qNum},${idx},this)">${esc(pt)}</textarea>
+      <button class="expl-del" title="Remove" onclick="removeExplPoint(${qNum},${idx})">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+function syncExplPoint(qNum, idx, el) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q || !Array.isArray(q.explanation)) return;
+  q.explanation[idx] = el.value;
+}
+
+function addExplPoint(qNum) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q) return;
+  if (!Array.isArray(q.explanation)) q.explanation = q.explanation ? [q.explanation] : [];
+  q.explanation.push('');
+  renderExplList(qNum);
+  // Focus the new textarea
+  const list = document.getElementById(`explList_${qNum}`);
+  list?.querySelectorAll('textarea')?.forEach((ta, i, arr) => { if (i === arr.length-1) ta.focus(); });
+}
+
+function removeExplPoint(qNum, idx) {
+  const q = questions.find(x => x.q_num === qNum);
+  if (!q || !Array.isArray(q.explanation)) return;
+  q.explanation.splice(idx, 1);
+  renderExplList(qNum);
+}
+
+// ── Status management ─────────────────────────────────────────────────────────
+function setStatus(qNum, status) {
+  statuses[qNum] = status;
+  const card = document.getElementById(`card_${qNum}`);
+  if (card) {
+    card.className = `q-card ${status}`;
+    const badge = document.getElementById(`statusBadge_${qNum}`);
+    if (badge) {
+      badge.className = `badge ${status==='approved'?'badge-green':status==='flagged'?'badge-orange':'badge-red'}`;
+      badge.textContent = status;
+    }
+    // Update button active states
+    card.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+    card.querySelector(`.status-btn.${status}`)?.classList.add('active');
+  }
+  updateCounts();
+}
+
+function approveAll() {
+  questions.forEach(q => setStatus(q.q_num, 'approved'));
+}
+
+function expandAll() {
+  // Cards are always expanded in this layout — nothing to do
+}
+
+function updateCounts() {
+  const approved = Object.values(statuses).filter(s => s==='approved').length;
+  const flagged  = Object.values(statuses).filter(s => s==='flagged').length;
+  document.getElementById('totalBadge').textContent    = `${questions.length} extracted`;
+  document.getElementById('approvedBadge').textContent = `${approved} approved`;
+  document.getElementById('flaggedBadge').textContent  = `${flagged} flagged`;
+  document.getElementById('saveCount').textContent     = approved;
+
+  const saveBar = document.getElementById('saveBar');
+  saveBar.style.display = approved > 0 ? 'flex' : 'none';
+}
+
+// ── Image upload ───────────────────────────────────────────────────────────────
+async function uploadQuestionImage(qNum, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const q = questions.find(x => x.q_num === qNum);
+  const tempId = q?.id || `img_${Date.now()}_q${qNum}`;
+
+  const fd = new FormData();
+  fd.append('image', file);
+  fd.append('questionId', tempId);
+
+  try {
+    const resp = await fetch('/api/ingest/upload-image', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) return alert('Image upload failed: ' + data.error);
+
+    imageUrls[qNum] = data.url;
+    if (q) q.image_url = data.url;
+
+    const preview = document.getElementById(`imgPreview_${qNum}`);
+    const urlSpan = document.getElementById(`imgUrl_${qNum}`);
+    if (preview) { preview.src = data.url; preview.style.display = 'block'; }
+    if (urlSpan) urlSpan.textContent = data.url;
+
+  } catch (err) {
+    alert('Image upload error: ' + err.message);
+  }
+}
+
+// ── Save to DB ────────────────────────────────────────────────────────────────
+async function saveQuestions() {
+  const approvedQs = questions
+    .filter(q => statuses[q.q_num] === 'approved')
+    .map(q => {
+      // Pull latest values from DOM
+      return {
+        ...q,
+        stem:        document.getElementById(`stem_${q.q_num}`)?.value || q.stem,
+        option_a:    document.getElementById(`opt_${q.q_num}_a`)?.value || q.option_a,
+        option_b:    document.getElementById(`opt_${q.q_num}_b`)?.value || q.option_b,
+        option_c:    document.getElementById(`opt_${q.q_num}_c`)?.value || q.option_c,
+        option_d:    document.getElementById(`opt_${q.q_num}_d`)?.value || q.option_d,
+        explanation: Array.isArray(q.explanation) ? q.explanation.filter(p => p.trim()) : [],
+        source:      document.getElementById(`src_${q.q_num}`)?.value || q.source,
+        subject:     document.getElementById(`subj_${q.q_num}`)?.value || q.subject_hint,
+        topic:       document.getElementById(`topic_${q.q_num}`)?.value || q.topic,
+        difficulty:  document.getElementById(`diff_${q.q_num}`)?.value || q.difficulty,
+        image_url:   imageUrls[q.q_num] || q.image_url || null
+      };
+    });
+
+  if (approvedQs.length === 0) return showAlert('No approved questions to save', 'error');
+
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('saveBtn').textContent = 'Saving…';
+
+  try {
+    const resp = await fetch('/api/ingest/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions: approvedQs })
+    });
+    const data = await resp.json();
+
+    if (!resp.ok || !data.success) {
+      showAlert(data.error || 'Save failed', 'error');
+      return;
+    }
+
+    showAlert(
+      `Saved ${data.saved} questions to bank. ${data.duplicates>0?`${data.duplicates} duplicates skipped.`:''} Total in bank: ${data.total_in_db}`,
+      'success'
+    );
+
+    // Mark saved cards
+    approvedQs.forEach(q => {
+      const card = document.getElementById(`card_${q.q_num}`);
+      if (card) {
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+      }
+    });
+
+    loadStats();
+    if (data.duplicates > 0) document.getElementById('dupWarning').style.display = 'inline';
+
+  } catch (err) {
+    showAlert('Save error: ' + err.message, 'error');
+  } finally {
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('saveBtn').textContent = 'Save to Question Bank';
+  }
+}
+
+// ── Download JSON ─────────────────────────────────────────────────────────────
+function downloadJSON() {
+  const approvedQs = questions.filter(q => statuses[q.q_num] === 'approved');
+  if (approvedQs.length === 0) return showAlert('No approved questions to download', 'error');
+
+  const blob = new Blob([JSON.stringify(approvedQs, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `fmge_questions_${Date.now()}.json`;
+  a.click();
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetAll() {
+  ['Q','A'].forEach(w => {
+    document.getElementById(`file${w}`).value = '';
+    document.getElementById(`drop${w}`).classList.remove('has-file','drag');
+    document.getElementById(`fname${w}`).textContent = '';
+    const p = document.getElementById(`preview${w}`);
+    p.src = ''; p.style.display = 'none';
+  });
+  questions = []; statuses = {}; imageUrls = {};
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('extractNote').textContent = 'Upload at least the question page to continue';
+  document.getElementById('reviewPanel').style.display = 'none';
+  document.getElementById('saveBar').style.display = 'none';
+  document.getElementById('cardsContainer').innerHTML = '';
+  hideAlert();
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function showAlert(msg, type) {
+  const el = document.getElementById('alert');
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type !== 'error') setTimeout(hideAlert, 6000);
+}
+function hideAlert() {
+  document.getElementById('alert').style.display = 'none';
+}
+function setProgress(show, pct) {
+  const bar = document.getElementById('progressBar');
+  bar.style.display = show ? 'block' : 'none';
+  if (show) document.getElementById('progressFill').style.width = pct + '%';
+}
+function esc(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
