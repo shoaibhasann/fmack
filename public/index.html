@@ -29,7 +29,7 @@
     min-height: 100vh;
   }
 
-  /* ── Header ─────────────────────────────────────── */
+  /* ── Header ───────────────────────────────────────── */
   header {
     background: linear-gradient(135deg, var(--dark) 0%, var(--mid) 50%, var(--navy) 100%);
     padding: 24px 40px;
@@ -51,8 +51,14 @@
   header h1 { color: #fff; font-size: 22px; font-weight: 700; line-height: 1.2; }
   header p  { color: #90a4c0; font-size: 13px; margin-top: 3px; }
 
-  .header-badge {
+  .header-right {
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-badge {
     background: rgba(72, 202, 228, 0.2);
     border: 1px solid var(--cyan);
     color: var(--cyan);
@@ -62,10 +68,16 @@
     font-weight: 600;
   }
 
-  /* ── Main layout ─────────────────────────────────── */
+  .db-stat {
+    color: #90a4c0;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* ── Main layout ──────────────────────────────────── */
   main { max-width: 900px; margin: 0 auto; padding: 36px 20px 60px; }
 
-  /* ── Step indicator ──────────────────────────────── */
+  /* ── Step indicator ───────────────────────────────── */
   .steps {
     display: flex;
     align-items: center;
@@ -112,7 +124,7 @@
   .step.active .step-label { color: var(--navy); font-weight: 600; }
   .step.done   .step-label { color: var(--green); }
 
-  /* ── Cards ───────────────────────────────────────── */
+  /* ── Cards ────────────────────────────────────────── */
   .card {
     background: #fff;
     border-radius: 14px;
@@ -129,60 +141,102 @@
 
   .card-title .icon { font-size: 20px; }
 
-  /* ── Upload zone ─────────────────────────────────── */
-  .upload-zone {
-    border: 2.5px dashed var(--border);
-    border-radius: 12px;
-    padding: 44px 24px;
-    text-align: center;
+  /* ── Subject selector ─────────────────────────────── */
+  .subject-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 600px) { .subject-grid { grid-template-columns: 1fr; } }
+
+  .field-label {
+    display: block;
+    font-size: 12px; font-weight: 600; color: var(--navy);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  select {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+    background: #fff;
+    outline: none;
     cursor: pointer;
-    transition: all 0.25s;
-    background: #fafbfc;
+    transition: border-color .2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236c757d' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
   }
 
-  .upload-zone:hover, .upload-zone.dragover {
-    border-color: var(--cyan);
-    background: rgba(72, 202, 228, 0.05);
+  select:focus { border-color: var(--navy); }
+
+  /* ── Count pills ──────────────────────────────────── */
+  .count-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
-  .upload-zone .upload-icon { font-size: 52px; margin-bottom: 12px; display: block; }
-  .upload-zone h3 { font-size: 16px; color: var(--navy); margin-bottom: 6px; }
-  .upload-zone p  { font-size: 13px; color: var(--muted); }
-  .upload-zone .formats {
-    display: inline-flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; justify-content: center;
-  }
-  .format-badge {
-    background: var(--light); color: var(--navy);
-    padding: 4px 10px; border-radius: 6px;
-    font-size: 11px; font-weight: 600;
+  .count-pill {
+    padding: 8px 18px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
   }
 
-  #fileInput { display: none; }
+  .count-pill:hover    { border-color: var(--navy); color: var(--navy); }
+  .count-pill.active   { border-color: var(--navy); background: var(--navy); color: #fff; }
 
-  /* ── File info bar ───────────────────────────────── */
-  .file-info {
-    display: none;
+  /* Custom count input */
+  .count-custom {
+    display: flex;
     align-items: center;
-    gap: 14px;
-    background: var(--light);
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin-top: 16px;
+    gap: 8px;
+    margin-top: 10px;
   }
 
-  .file-info.show { display: flex; }
-  .file-icon { font-size: 28px; }
-  .file-name { font-weight: 600; font-size: 14px; color: var(--navy); }
-  .file-size { font-size: 12px; color: var(--muted); }
-  .file-remove {
-    margin-left: auto; background: none; border: none;
-    color: var(--red); cursor: pointer; font-size: 18px;
-    padding: 4px 8px; border-radius: 6px;
-    transition: background 0.2s;
+  .count-custom input {
+    width: 80px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color .2s;
   }
-  .file-remove:hover { background: rgba(239, 35, 60, 0.1); }
 
-  /* ── Buttons ─────────────────────────────────────── */
+  .count-custom input:focus { border-color: var(--navy); }
+  .count-custom label { font-size: 13px; color: var(--muted); }
+
+  /* ── Progress bar ─────────────────────────────────── */
+  .progress-wrap { margin-top: 16px; display: none; }
+  .progress-wrap.show { display: block; }
+  .progress-bar {
+    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--navy), var(--cyan));
+    border-radius: 3px; transition: width 0.4s ease;
+  }
+  .progress-label { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ── Buttons ──────────────────────────────────────── */
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 12px 24px; border-radius: 10px;
@@ -211,27 +265,8 @@
   .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
   .btn-full { width: 100%; justify-content: center; }
 
-  /* Mode toggle */
-  .mode-btn { flex:1; padding:8px 10px; border:2px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; font-size:10.5pt; font-weight:600; color:var(--muted); transition:all .2s; }
-  .mode-btn.active { border-color:var(--navy); background:var(--navy); color:#fff; }
-  .mode-btn:hover:not(.active) { border-color:var(--navy); color:var(--navy); }
-
-  /* ── Progress bar ────────────────────────────────── */
-  .progress-wrap { margin-top: 16px; display: none; }
-  .progress-wrap.show { display: block; }
-  .progress-bar {
-    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, var(--navy), var(--cyan));
-    border-radius: 3px; transition: width 0.4s ease;
-  }
-  .progress-label { font-size: 12px; color: var(--muted); margin-top: 6px; }
-
-  /* ── Spinner ─────────────────────────────────────── */
+  /* ── Spinner ──────────────────────────────────────── */
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes batchPulse { 0%{background-position:0% 0%} 100%{background-position:200% 0%} }
   .spinner {
     width: 16px; height: 16px;
     border: 2px solid rgba(255,255,255,0.4);
@@ -240,24 +275,7 @@
     animation: spin 0.7s linear infinite;
   }
 
-  /* ── Text preview ────────────────────────────────── */
-  .text-preview-wrap { margin-top: 16px; display: none; }
-  .text-preview-wrap.show { display: block; }
-  .text-preview-toggle {
-    background: none; border: none; cursor: pointer;
-    color: var(--cyan2); font-size: 13px; font-weight: 600;
-    display: flex; align-items: center; gap: 6px; padding: 0;
-  }
-  .text-preview-box {
-    background: var(--light); border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px; margin-top: 10px;
-    font-family: 'Courier New', monospace; font-size: 11.5px;
-    max-height: 180px; overflow-y: auto; color: var(--text);
-    white-space: pre-wrap; display: none;
-  }
-  .text-preview-box.open { display: block; }
-
-  /* ── Variation cards ─────────────────────────────── */
+  /* ── Variation cards ──────────────────────────────── */
   #resultsSection { display: none; }
   #resultsSection.show { display: block; }
 
@@ -281,26 +299,19 @@
 
   .var-card-head {
     padding: 16px 18px;
-    background: linear-gradient(135deg, var(--dark), var(--navy));
     color: #fff;
     display: flex; align-items: flex-start; gap: 12px;
   }
+
   .set-badge {
     width: 40px; height: 40px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: 900; color: var(--dark);
+    font-size: 13px; font-weight: 900;
     flex-shrink: 0;
   }
+
   .var-card-head h3 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
-  .var-card-head p  { font-size: 11px; color: #90a4c0; }
-  .set-meta { margin-left: auto; padding-top: 2px; }
-  .diag-count {
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: #fff; font-size: 10px; font-weight: 600;
-    padding: 3px 8px; border-radius: 12px; white-space: nowrap;
-  }
-  .diag-count.no-diag { color: #90a4c0; background: transparent; border-color: rgba(255,255,255,0.1); }
+  .var-card-head p  { font-size: 11px; opacity: 0.7; }
 
   .var-card-body { padding: 14px 18px; }
 
@@ -309,59 +320,43 @@
     padding: 7px 0;
     border-bottom: 1px solid var(--light);
     line-height: 1.5;
-    display: flex; align-items: flex-start; gap: 6px;
   }
-  .q-preview-item > span:first-child { flex: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-
   .q-preview-item:last-child { border-bottom: none; }
   .q-preview-item strong { color: var(--navy); font-size: 11px; }
-  .diag-tag {
-    background: rgba(72,202,228,0.15); color: var(--cyan2);
-    border: 1px solid rgba(72,202,228,0.3);
-    font-size: 9.5px; font-weight: 600; padding: 1px 6px;
-    border-radius: 8px; white-space: nowrap; flex-shrink: 0; margin-top: 2px;
-  }
   .more-hint { font-size: 11px; color: var(--muted); padding-top: 6px; font-style: italic; }
 
   .var-card-foot { padding: 14px 18px; border-top: 1px solid var(--border); }
 
   /* Download button states */
-  .dl-btn { position: relative; }
   .dl-btn.loading { background: linear-gradient(135deg, #2d5a3e, #3a8f6e); }
   .dl-btn.done    { background: linear-gradient(135deg, #1b5e20, #2e7d32); }
   .dl-btn.error   { background: linear-gradient(135deg, #7f0000, #c62828); }
 
-  /* ── Status banner ───────────────────────────────── */
+  /* ── Status banner ────────────────────────────────── */
   .status-banner {
     display: none; padding: 12px 18px;
     border-radius: 10px; font-size: 13px; font-weight: 500;
     margin-bottom: 18px; align-items: center; gap: 10px;
   }
   .status-banner.show { display: flex; }
-  .status-banner.error   { background: rgba(239, 35, 60, 0.1);  color: #c0392b; border: 1px solid rgba(239,35,60,0.3); }
-  .status-banner.success { background: rgba(6, 214, 160, 0.1);  color: #1b7a5a; border: 1px solid rgba(6,214,160,0.3); }
-  .status-banner.info    { background: rgba(72, 202, 228, 0.1); color: var(--navy); border: 1px solid rgba(72,202,228,0.3); }
+  .status-banner.error   { background: rgba(239,35,60,0.1);  color: #c0392b; border: 1px solid rgba(239,35,60,0.3); }
+  .status-banner.success { background: rgba(6,214,160,0.1);  color: #1b7a5a; border: 1px solid rgba(6,214,160,0.3); }
+  .status-banner.info    { background: rgba(72,202,228,0.1); color: var(--navy); border: 1px solid rgba(72,202,228,0.3); }
   .status-banner.warning { background: rgba(255,193,7,0.12); color: #7a5800; border: 1px solid rgba(255,193,7,0.4); }
 
-  /* ── Footer ──────────────────────────────────────── */
+  /* ── Footer ───────────────────────────────────────── */
   footer {
     text-align: center; padding: 20px;
     color: var(--muted); font-size: 12px;
     border-top: 1px solid var(--border);
   }
 
-  /* ── Animations ──────────────────────────────────── */
+  /* ── Animations ───────────────────────────────────── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   .fade-up { animation: fadeUp 0.4s ease both; }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.5; }
-  }
-  .pulse { animation: pulse 1.4s ease infinite; }
 </style>
 </head>
 <body>
@@ -371,18 +366,21 @@
   <div class="logo">🩺</div>
   <div>
     <h1>FMGE AI Question Generator</h1>
-    <p>Upload question paper → AI creates 2 variation sets → Download as polished PDFs</p>
+    <p>Select subject from question bank → AI creates Easy · Medium · Hard sets → Download PDFs</p>
   </div>
-  <div class="header-badge">Powered by Gemini AI</div>
+  <div class="header-right">
+    <span class="db-stat" id="dbStat">Loading...</span>
+    <div class="header-badge">Powered by Gemini AI</div>
+  </div>
 </header>
 
 <main>
 
-  <!-- Steps (3 steps now) -->
+  <!-- Step indicator -->
   <div class="steps" id="stepsBar">
     <div class="step active" id="step1">
       <div class="step-circle">1</div>
-      <div class="step-label">Upload File</div>
+      <div class="step-label">Select Questions</div>
     </div>
     <div class="step" id="step2">
       <div class="step-circle">2</div>
@@ -397,34 +395,37 @@
   <!-- Status banner -->
   <div class="status-banner" id="statusBanner"></div>
 
-  <!-- Upload + Generate card (merged) -->
+  <!-- Input card -->
   <div class="card fade-up">
-    <div class="card-title"><span class="icon">📂</span> Upload Question Paper</div>
+    <div class="card-title"><span class="icon">📚</span> Select Questions from Bank</div>
 
-    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-      <span class="upload-icon">📄</span>
-      <h3>Drop your file here or click to browse</h3>
-      <p>Supports PDF, DOC, DOCX, and TXT question papers</p>
-      <div class="formats">
-        <span class="format-badge">PDF</span>
-        <span class="format-badge">DOC</span>
-        <span class="format-badge">DOCX</span>
-        <span class="format-badge">TXT</span>
-      </div>
-    </div>
-    <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt">
-
-    <!-- File info -->
-    <div class="file-info" id="fileInfo">
-      <span class="file-icon" id="fileTypeIcon">📄</span>
+    <div class="subject-grid">
+      <!-- Subject dropdown — populated from /api/subjects -->
       <div>
-        <div class="file-name" id="fileName"></div>
-        <div class="file-size" id="fileSize"></div>
+        <label class="field-label">Subject</label>
+        <select id="subjectSelect">
+          <option value="">Loading subjects...</option>
+        </select>
       </div>
-      <button class="file-remove" onclick="resetFile()" title="Remove file">✕</button>
+
+      <!-- Quick-select count pills -->
+      <div>
+        <label class="field-label">Number of Questions</label>
+        <div class="count-pills">
+          <button class="count-pill"        onclick="setCount(10)">10</button>
+          <button class="count-pill"        onclick="setCount(20)">20</button>
+          <button class="count-pill active" onclick="setCount(50)">50</button>
+          <button class="count-pill"        onclick="setCount(100)">100</button>
+        </div>
+        <div class="count-custom">
+          <input type="number" id="customCount" min="1" max="200" placeholder="Custom"
+            oninput="setCount(parseInt(this.value) || 0, true)">
+          <label>Custom (max 200)</label>
+        </div>
+      </div>
     </div>
 
-    <!-- Combined progress bar -->
+    <!-- Progress bar (hidden until generating) -->
     <div class="progress-wrap" id="genProgress">
       <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
         <div class="progress-label" id="genLabel">Processing...</div>
@@ -434,43 +435,22 @@
       <div id="genSubLabel" style="font-size:11px; color:var(--muted); margin-top:5px;"></div>
     </div>
 
-    <!-- Subject input -->
-    <div style="margin-top:18px;">
-      <label style="display:block;font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
-        Subject Name <span style="color:var(--muted);font-weight:400;text-transform:none;">(appears on PDF header)</span>
-      </label>
-      <input
-        type="text"
-        id="subjectInput"
-        placeholder="e.g. Medicine, Surgery, Anatomy..."
-        style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;transition:border-color .2s;"
-        onfocus="this.style.borderColor='var(--navy)'"
-        onblur="this.style.borderColor='var(--border)'"
-      />
-    </div>
-
-    <!-- Mode toggle + generate button -->
-    <div style="margin-top:16px;">
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button class="mode-btn active" id="modeFast" onclick="setMode('fast')">⚡ Fast <span style="font-size:9pt;opacity:.7">(2-4 min)</span></button>
-        <button class="mode-btn" id="modeEcon" onclick="setMode('economy')">💰 Economy <span style="font-size:9pt;opacity:.7">(10-20 min, cheaper)</span></button>
-      </div>
-      <button class="btn btn-primary btn-full" id="generateBtn" onclick="runAll()" disabled>
-        Generate 3 Variations
+    <!-- Generate button -->
+    <div style="margin-top: 16px;">
+      <button class="btn btn-primary btn-full" id="generateBtn" onclick="runGenerate()" disabled>
+        Generate Easy · Medium · Hard Sets
       </button>
     </div>
   </div>
 
-  <!-- Results section -->
+  <!-- Results section — rendered after generation -->
   <div id="resultsSection">
     <div class="card fade-up">
-      <div class="card-title"><span class="icon">✅</span> 3 Variations Ready — Download PDFs</div>
-
+      <div class="card-title"><span class="icon">✅</span> 3 Sets Ready — Download PDFs</div>
       <div id="variationsGrid" class="variations-grid"></div>
-
       <div style="text-align:center; margin-top:8px;">
-        <button class="btn btn-outline" onclick="runAll()" style="font-size:13px;">
-          🔄 Regenerate All
+        <button class="btn btn-outline" onclick="runGenerate()" style="font-size:13px;">
+          🔄 Regenerate
         </button>
       </div>
     </div>
@@ -479,542 +459,286 @@
 </main>
 
 <footer>
-  FMGE AI Question Generator &nbsp;·&nbsp; Gemini AI + Node.js + Puppeteer &nbsp;·&nbsp; PDF export with flowcharts
+  FMGE AI Generator &nbsp;·&nbsp; Gemini AI + Node.js + Puppeteer &nbsp;·&nbsp; Questions from 24K+ DB
 </footer>
 
 <script>
-  // ── State ──────────────────────────────────────────────────────────────────
-  const state = {
-    file: null,
-    extractedText: null,
-    generatedData: null,
-    subject: '',
-    mode: 'fast'   // 'fast' = streaming, 'economy' = batch
-  };
+// ── State ──────────────────────────────────────────────────────────────────────
+const state = {
+  subject:       '',
+  count:         50,
+  generatedData: null,
+};
 
-  function setMode(m) {
-    state.mode = m;
-    document.getElementById('modeFast').classList.toggle('active', m === 'fast');
-    document.getElementById('modeEcon').classList.toggle('active', m === 'economy');
+// ── On load: fetch subjects, populate dropdown ─────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadSubjects);
+
+async function loadSubjects() {
+  try {
+    const res  = await fetch('/api/subjects');
+    const data = await res.json();
+
+    const sel = document.getElementById('subjectSelect');
+    sel.innerHTML = '<option value="">— Choose a subject —</option>';
+
+    data.subjects.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value       = s.subject;
+      opt.textContent = `${s.subject} (${s.count.toLocaleString()} questions)`;
+      sel.appendChild(opt);
+    });
+
+    sel.addEventListener('change', () => {
+      state.subject = sel.value;
+      document.getElementById('generateBtn').disabled = !state.subject;
+    });
+
+    // Show total count in header
+    const total = data.subjects.reduce((s, r) => s + r.count, 0);
+    document.getElementById('dbStat').textContent = `${total.toLocaleString()} questions in bank`;
+
+  } catch (err) {
+    showStatus('error', 'Could not load subjects: ' + err.message);
   }
+}
 
-  function switchToFast() {
-    // Cancel the batch poll and rerun with fast/streaming mode
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    const fill = document.getElementById('genFill');
-    fill.style.animation = 'none';
-    fill.style.backgroundImage = '';
-    setMode('fast');
-    const btn = document.getElementById('generateBtn');
-    btn.innerHTML = '<span class="spinner"></span> Switching to Fast...';
-    setProgressPct(10);
-    document.getElementById('genLabel').textContent = 'Switching to fast mode — reprocessing...';
-    document.getElementById('genSubLabel').textContent = 'Batch job abandoned · Starting real-time generation';
-    runFast(btn);
-  }
+// ── Count selection ────────────────────────────────────────────────────────────
+function setCount(n, fromInput = false) {
+  if (!n || n < 1) return;
+  state.count = Math.min(n, 200);
 
-  // ── File handling ──────────────────────────────────────────────────────────
-  const fileInput = document.getElementById('fileInput');
-  const uploadZone = document.getElementById('uploadZone');
-
-  fileInput.addEventListener('change', e => {
-    if (e.target.files[0]) setFile(e.target.files[0]);
+  // Sync pills
+  document.querySelectorAll('.count-pill').forEach(b => {
+    b.classList.toggle('active', parseInt(b.textContent) === state.count);
   });
 
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-  uploadZone.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadZone.classList.remove('dragover');
-    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
-  });
+  // Sync custom input only when changed via pill
+  if (!fromInput) document.getElementById('customCount').value = '';
+}
 
-  function setFile(file) {
-    state.file = file;
-    state.extractedText = null;
-    state.generatedData = null;
+// ── Main generate function ─────────────────────────────────────────────────────
+// Fetches Easy/Medium/Hard question sets directly from DB — no AI, instant result.
+async function runGenerate() {
+  if (!state.subject) return showStatus('error', 'Please select a subject first.');
 
-    const icons = { pdf: '📕', doc: '📘', docx: '📘', txt: '📄' };
-    const ext = file.name.split('.').pop().toLowerCase();
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Fetching from database...';
 
-    document.getElementById('fileTypeIcon').textContent = icons[ext] || '📄';
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileSize').textContent = formatBytes(file.size);
-    document.getElementById('fileInfo').classList.add('show');
-    document.getElementById('generateBtn').disabled = false;
-    document.getElementById('resultsSection').classList.remove('show');
-    hideProgress('genProgress');
+  document.getElementById('resultsSection').classList.remove('show');
+  showProgress('genProgress', 'genFill', 'genLabel', 'Loading questions from database...');
+  setProgressPct(30);
+  setStep(2);
+  hideStatus();
 
-    setStep(1);
-    hideStatus();
+  try {
+    // Single POST — returns instantly (DB query, no AI)
+    const res  = await fetch('/api/generate-from-db', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ subject: state.subject, count: state.count }),
+    });
+
+    setProgressPct(70);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load questions');
+
+    // Fetch the stored result (same shape as AI-generated results)
+    setProgressPct(90);
+    const fullData = await fetch(`/api/result/${data.id}`).then(r => r.json());
+    _renderDone(fullData, btn, data.counts);
+
+  } catch (err) {
+    _genError(err.message);
   }
+}
 
-  function resetFile() {
-    state.file = null;
-    state.extractedText = null;
-    state.generatedData = null;
+function _renderDone(fullData, btn) {
+  state.generatedData = fullData;
+  setProgressPct(100);
+  document.getElementById('genPct').textContent  = '100%';
+  document.getElementById('genLabel').textContent =
+    `✓ ${fullData.metadata.total_questions} questions — Easy · Medium · Hard ready`;
+  document.getElementById('genSubLabel').textContent = '';
+  renderVariationCards(fullData);
+  setStep(3, true);
+  showStatus('success',
+    `✓ ${fullData.metadata.total_questions} questions · ${fullData.metadata.subject} · 3 sets ready — download below.`);
+  btn.innerHTML = '🔄 Regenerate';
+  btn.disabled  = false;
+}
 
-    fileInput.value = '';
-    document.getElementById('fileInfo').classList.remove('show');
-    document.getElementById('generateBtn').disabled = true;
-    document.getElementById('resultsSection').classList.remove('show');
-    hideProgress('genProgress');
-    setStep(1);
-    hideStatus();
-  }
+function _genError(msg) {
+  hideProgress('genProgress');
+  showStatus('error', `✗ ${msg}`);
+  setStep(1);
+  const btn = document.getElementById('generateBtn');
+  btn.disabled  = false;
+  btn.innerHTML = 'Generate Easy · Medium · Hard Sets';
+}
 
-  // ── Combined: extract → Batch API submit → poll → render ─────────────────
-  let pollTimer = null;
+// ── Checkpoint helpers — save/restore partial results in localStorage ──────────
+const CHECKPOINT_KEY = 'fmge_checkpoint';
+function saveCheckpoint(data)  { try { localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(data)); } catch(_) {} }
+function loadCheckpoint()      { try { const d = localStorage.getItem(CHECKPOINT_KEY); return d ? JSON.parse(d) : null; } catch(_) { return null; } }
+function clearCheckpoint()     { try { localStorage.removeItem(CHECKPOINT_KEY); } catch(_) {} }
 
-  async function runAll() {
-    if (!state.file) return;
+// ── Render variation cards ─────────────────────────────────────────────────────
+// Each card represents one difficulty set: Easy (green), Medium (blue), Hard (red)
+function renderVariationCards(data) {
+  const grid = document.getElementById('variationsGrid');
 
-    // Save subject at generation time — used for all PDF downloads
-    state.subject = (document.getElementById('subjectInput')?.value || '').trim();
+  // Difficulty-based color scheme
+  const themes = [
+    { badge: '#06d6a0', head: 'linear-gradient(135deg,#1b5e3b,#0d3b24)', label: '🟢' },  // Easy
+    { badge: '#48cae4', head: 'linear-gradient(135deg,#0f3460,#1a1a2e)',  label: '🔵' },  // Medium
+    { badge: '#ef233c', head: 'linear-gradient(135deg,#7f0000,#4a0000)',  label: '🔴' },  // Hard
+  ];
 
-    const btn = document.getElementById('generateBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Extracting...';
+  grid.innerHTML = data.variations.map((v, i) => {
+    const theme   = themes[i] || themes[1];
+    const subject = data.metadata?.subject || 'FMGE';
 
-    showProgress('genProgress', 'genFill', 'genLabel', 'Extracting text from file...');
-    document.getElementById('resultsSection').classList.remove('show');
-    setStep(2);
-    hideStatus();
+    // Preview: first 3 question stems
+    const previewQs = v.questions.slice(0, 3).map(q => `
+      <div class="q-preview-item">
+        <strong>Q${q.q_num}.</strong> ${q.question}
+      </div>`).join('');
 
-    // ── Step 1: Extract ──────────────────────────────────────────────────────
-    try {
-      const formData = new FormData();
-      formData.append('file', state.file);
-      setProgressPct(5);
+    const moreCount = v.questions.length - 3;
 
-      const res = await fetch('/api/extract', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Extraction failed');
-
-      state.extractedText = data.text;
-      setProgressPct(10);
-      document.getElementById('genLabel').textContent =
-        `Extracted ${data.charCount.toLocaleString()} chars — starting generation...`;
-
-    } catch (err) { return _genError(`Extraction failed: ${err.message}`); }
-
-    if (state.mode === 'fast') {
-      await runFast(btn);
-    } else {
-      await runEconomy(btn);
-    }
-  }
-
-  // ── Checkpoint helpers ───────────────────────────────────────────────────
-  const CHECKPOINT_KEY = 'fmge_checkpoint';
-
-  function saveCheckpoint(data) {
-    try { localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(data)); } catch(_) {}
-  }
-  function loadCheckpoint() {
-    try { const d = localStorage.getItem(CHECKPOINT_KEY); return d ? JSON.parse(d) : null; } catch(_) { return null; }
-  }
-  function clearCheckpoint() {
-    try { localStorage.removeItem(CHECKPOINT_KEY); } catch(_) {}
-  }
-
-  // ── Fast mode: streaming SSE with per-batch checkpointing ────────────────
-  async function runFast(btn) {
-    btn.innerHTML = '<span class="spinner"></span> Generating...';
-    document.getElementById('genLabel').textContent = 'Sending to Gemini (fast mode)...';
-    document.getElementById('genSubLabel').textContent = 'Real-time processing · 2-4 min for large files';
-
-    // Accumulated checkpoint — survives network drops
-    const cp = { subject: 'FMGE', totalBatches: 0, completedBatches: 0, sets: [{ variation_id:1, title:'Variation 1', questions:[] }, { variation_id:2, title:'Variation 2', questions:[] }, { variation_id:3, title:'Variation 3', questions:[] }] };
-
-    try {
-      const resultId = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/generate');
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.timeout = 0; // no timeout — generation can take 10+ min
-        let buffer = '';
-
-        xhr.onprogress = () => {
-          const newText = xhr.responseText.slice(buffer.length);
-          buffer = xhr.responseText;
-          newText.split('\n').forEach(line => {
-            if (line.startsWith(': ping')) return; // ignore heartbeat
-            if (!line.startsWith('data:')) return;
-            try {
-              const d = JSON.parse(line.slice(5));
-              if (d.type === 'start') {
-                cp.totalBatches = d.totalBatches;
-                document.getElementById('genLabel').textContent =
-                  `Processing ${d.totalQuestions} questions in ${d.totalBatches} batches...`;
-
-              } else if (d.type === 'batch_data') {
-                // Checkpoint: save questions from this batch immediately
-                if (d.subject) cp.subject = d.subject;
-                cp.completedBatches++;
-                (d.questions[0] || []).forEach(q => cp.sets[0].questions.push(q));
-                (d.questions[1] || []).forEach(q => cp.sets[1].questions.push(q));
-                (d.questions[2] || []).forEach(q => cp.sets[2].questions.push(q));
-                saveCheckpoint(cp);
-
-                const pct = Math.min(10 + Math.round(d.pct * 0.85), 94);
-                setProgressPct(pct);
-                document.getElementById('genPct').textContent = pct + '%';
-                document.getElementById('genSubLabel').textContent =
-                  `Batch ${d.batch}/${d.total} done · ${d.questionsProcessed} questions saved`;
-
-              } else if (d.type === 'batch_retry') {
-                document.getElementById('genSubLabel').textContent = `Retrying batch ${d.batch}: ${d.reason}`;
-
-              } else if (d.type === 'batch_skip') {
-                cp.completedBatches++;
-                document.getElementById('genSubLabel').textContent = `Batch ${d.batch}/${d.total} skipped (failed after retries) — continuing...`;
-
-              } else if (d.type === 'complete') {
-                clearCheckpoint(); // full result available — no need for partial
-                resolve(d.id);
-
-              } else if (d.type === 'error') {
-                reject(new Error(d.message));
-              }
-            } catch(_) {}
-          });
-        };
-
-        xhr.onerror = () => reject(new Error('Network connection lost'));
-        xhr.onabort = () => reject(new Error('Request aborted'));
-        xhr.onload = () => { if (xhr.status !== 200) reject(new Error(`HTTP ${xhr.status}`)); };
-        xhr.send(JSON.stringify({ text: state.extractedText }));
-      });
-
-      setProgressPct(97);
-      document.getElementById('genLabel').textContent = 'Loading results...';
-      const dataRes = await fetch(`/api/result/${resultId}`);
-      if (!dataRes.ok) throw new Error('Could not load result data');
-      const fullData = await dataRes.json();
-      _renderDone(fullData, btn);
-
-    } catch(err) {
-      // Network dropped — try to recover from checkpoint
-      if (cp.completedBatches > 0) {
-        const recovered = cp.sets[0].questions.length;
-        const total = cp.totalBatches > 0
-          ? `${cp.completedBatches}/${cp.totalBatches} batches`
-          : `${cp.completedBatches} batches`;
-        const fullData = {
-          metadata: { total_questions: recovered, subject: cp.subject },
-          variations: cp.sets
-        };
-        showStatus('error',
-          `Connection lost — recovered ${recovered} questions from ${total}. Showing partial results below.`);
-        _renderDone(fullData, btn);
-        saveCheckpoint(cp); // keep it in case user wants to retry
-      } else {
-        _genError(err.message);
-      }
-    }
-  }
-
-  // ── Economy mode: batch API ──────────────────────────────────────────────
-  async function runEconomy(btn) {
-    btn.innerHTML = '<span class="spinner"></span> Submitting...';
-    let jobName, totalQuestions, totalBatches, modelName;
-
-    try {
-      const res = await fetch('/api/batch-start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: state.extractedText })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Batch submit failed');
-
-      jobName        = data.jobName;
-      totalQuestions = data.totalQuestions;
-      totalBatches   = data.totalBatches;
-      modelName      = data.model;
-      setProgressPct(15);
-      document.getElementById('genLabel').textContent =
-        `Batch job submitted — ${totalQuestions} questions · ${totalBatches} requests`;
-      document.getElementById('genSubLabel').textContent =
-        `Model: ${modelName} · 50% batch discount · Checking every 15s...`;
-      document.getElementById('genPct').textContent = '15%';
-      btn.innerHTML = '<span class="spinner"></span> Waiting for Gemini... &nbsp;<span id="switchFastBtn" onclick="switchToFast()" style="background:#48cae4;color:#0f3460;padding:2px 10px;border-radius:12px;font-size:9pt;font-weight:700;cursor:pointer;margin-left:8px">⚡ Switch to Fast</span>';
-
-    } catch (err) { return _genError(`Batch submit failed: ${err.message}`); }
-
-    const TERMINAL = new Set(['JOB_STATE_SUCCEEDED','JOB_STATE_FAILED','JOB_STATE_CANCELLED','JOB_STATE_EXPIRED']);
-    let elapsed = 0;
-
-    // Indeterminate pulse animation while batch is running
-    const fill = document.getElementById('genFill');
-    fill.style.transition = 'none';
-    fill.style.backgroundImage = 'linear-gradient(90deg,#0f3460,#48cae4,#0f3460)';
-    fill.style.backgroundSize = '200% 100%';
-    fill.style.animation = 'batchPulse 2s linear infinite';
-
-    try {
-      await new Promise((resolve, reject) => {
-        pollTimer = setInterval(async () => {
-          elapsed += 15;
-          const mins = Math.floor(elapsed / 60);
-          const secs = elapsed % 60;
-          const elapsedStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-
-          try {
-            const r = await fetch(`/api/batch-status?jobName=${encodeURIComponent(jobName)}`);
-            const d = await r.json();
-            if (!r.ok) { clearInterval(pollTimer); reject(new Error(d.error)); return; }
-
-            document.getElementById('genPct').textContent = 'Working...';
-            let subMsg = `Status: ${d.state} · ${elapsedStr} elapsed`;
-            if (elapsed >= 600) subMsg += ' · Taking longer than usual — consider Fast mode next time';
-            document.getElementById('genSubLabel').textContent = subMsg;
-
-            if (TERMINAL.has(d.state)) {
-              clearInterval(pollTimer);
-              if (d.state === 'JOB_STATE_SUCCEEDED') resolve();
-              else reject(new Error(`Job ended: ${d.state}`));
-            }
-          } catch(e) { clearInterval(pollTimer); reject(e); }
-        }, 15000);
-      });
-    } catch(err) { return _genError(err.message); }
-
-    // Stop pulse animation
-    fill.style.animation = 'none';
-    fill.style.backgroundImage = '';
-    fill.style.backgroundSize = '';
-
-    setProgressPct(92);
-    document.getElementById('genLabel').textContent = 'Batch complete — loading results...';
-    document.getElementById('genSubLabel').textContent = '';
-
-    try {
-      const r = await fetch(`/api/batch-result?jobName=${encodeURIComponent(jobName)}`);
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-
-      const dataRes = await fetch(`/api/result/${d.resultId}`);
-      if (!dataRes.ok) throw new Error('Could not load result data');
-      const fullData = await dataRes.json();
-      _renderDone(fullData, btn);
-
-    } catch(err) { _genError(`Result fetch failed: ${err.message}`); }
-  }
-
-  function _renderDone(fullData, btn) {
-    state.generatedData = fullData;
-    setProgressPct(100);
-    document.getElementById('genPct').textContent = '100%';
-    document.getElementById('genLabel').textContent =
-      `✓ ${fullData.metadata.total_questions} questions — 2 sets ready`;
-    document.getElementById('genSubLabel').textContent = '';
-    renderVariationCards(fullData);
-    setStep(3, true);
-    showStatus('success',
-      `✓ ${fullData.metadata.total_questions} questions · ${fullData.metadata.subject} · 2 sets ready — download below.`);
-    btn.innerHTML = '🔄 Regenerate';
-    btn.disabled = false;
-  }
-
-  function _genError(msg) {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    hideProgress('genProgress');
-    showStatus('error', `✗ ${msg}`);
-    setStep(1);
-    const btn = document.getElementById('generateBtn');
-    btn.disabled = false;
-    btn.innerHTML = 'Generate 2 Variations';
-  }
-
-  function setProgressPct(pct) {
-    document.getElementById('genFill').style.width = pct + '%';
-  }
-
-  // ── Render variation cards ─────────────────────────────────────────────────
-  function renderVariationCards(data) {
-    const grid = document.getElementById('variationsGrid');
-    const colors = ['#48cae4', '#06d6a0', '#ffd166'];
-    const headBg  = ['#0f3460', '#1b5e3b', '#7a5c00'];
-
-    grid.innerHTML = data.variations.map((v, i) => {
-      const diagramCount = v.questions.filter(q => q.explanation?.flowchart).length;
-      const subject = data.metadata?.subject || 'FMGE';
-
-      // Show first 3 question previews
-      const previewQs = v.questions.slice(0, 3).map(q => {
-        const hasDiagram = !!q.explanation?.flowchart;
-        return `
-        <div class="q-preview-item">
-          <span><strong>Q${q.q_num}.</strong> ${q.question}</span>
-          ${hasDiagram ? '<span class="diag-tag">📊 diagram</span>' : ''}
-        </div>`;
-      }).join('');
-
-      const moreCount = v.questions.length - 3;
-
-      return `
-      <div class="var-card fade-up" style="animation-delay:${i * 0.08}s">
-        <div class="var-card-head" style="background:linear-gradient(135deg,${headBg[i]},var(--dark))">
-          <div class="set-badge" style="background:${colors[i]}">${i + 1}</div>
-          <div>
-            <h3>${v.title}</h3>
-            <p>${v.questions.length} questions &nbsp;·&nbsp; ${subject}</p>
-          </div>
-          <div class="set-meta">
-            ${diagramCount > 0
-              ? `<span class="diag-count">📊 ${diagramCount} diagram${diagramCount > 1 ? 's' : ''}</span>`
-              : '<span class="diag-count no-diag">No diagrams needed</span>'}
-          </div>
+    return `
+    <div class="var-card fade-up" style="animation-delay:${i * 0.08}s">
+      <div class="var-card-head" style="background:${theme.head}">
+        <div class="set-badge" style="background:${theme.badge};color:#fff">${theme.label}</div>
+        <div>
+          <h3>${v.title}</h3>
+          <p>${v.questions.length} questions &nbsp;·&nbsp; ${subject}</p>
         </div>
-        <div class="var-card-body">
-          ${previewQs}
-          ${moreCount > 0 ? `<div class="more-hint">+ ${moreCount} more questions</div>` : ''}
-        </div>
-        <div class="var-card-foot">
-          <button
-            class="btn btn-success btn-full dl-btn"
-            id="dlBtn${i}"
-            onclick="downloadPDF(${i})"
-          >
-            📥 Download ${v.title} as PDF
-          </button>
-        </div>
-      </div>`;
-    }).join('');
+      </div>
+      <div class="var-card-body">
+        ${previewQs}
+        ${moreCount > 0 ? `<div class="more-hint">+ ${moreCount} more questions</div>` : ''}
+      </div>
+      <div class="var-card-foot">
+        <button class="btn btn-success btn-full dl-btn" id="dlBtn${i}" onclick="downloadPDF(${i})">
+          📥 Download ${v.title} Set as PDF
+        </button>
+      </div>
+    </div>`;
+  }).join('');
 
-    document.getElementById('resultsSection').classList.add('show');
-    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('resultsSection').classList.add('show');
+  document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── PDF download ───────────────────────────────────────────────────────────────
+async function downloadPDF(idx) {
+  if (!state.generatedData) return;
+  const btn       = document.getElementById(`dlBtn${idx}`);
+  const variation = state.generatedData.variations[idx];
+  const metadata  = state.generatedData.metadata;
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner"></span> Building PDF...';
+
+  try {
+    const res = await fetch('/api/pdf', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ variation, metadata, pdfSubject: state.subject }),
+    });
+
+    if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'PDF generation failed'); }
+
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${state.subject} ${variation.title} Set.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    btn.classList.replace('loading', 'done');
+    btn.innerHTML = `✓ Downloaded — ${variation.title}`;
+    setTimeout(() => {
+      btn.disabled  = false;
+      btn.classList.remove('done');
+      btn.innerHTML = `📥 Download ${variation.title} Set as PDF`;
+    }, 3000);
+
+  } catch (err) {
+    btn.classList.replace('loading', 'error');
+    btn.innerHTML = `✗ Failed — ${err.message.substring(0, 40)}`;
+    btn.disabled  = false;
+    setTimeout(() => {
+      btn.classList.remove('error');
+      btn.innerHTML = `📥 Download ${variation.title} Set as PDF`;
+    }, 4000);
   }
+}
 
-  // ── Download PDF ───────────────────────────────────────────────────────────
-  async function downloadPDF(idx) {
-    const btn = document.getElementById(`dlBtn${idx}`);
-    if (!btn || !state.generatedData) return;
-
-    const variation = state.generatedData.variations[idx];
-    const metadata  = state.generatedData.metadata;
-    const pdfSubject = state.subject || (document.getElementById('subjectInput')?.value || '').trim();
-
-    btn.disabled = true;
-    btn.classList.add('loading');
-    btn.innerHTML = '<span class="spinner"></span> Building PDF...';
-
-    try {
-      const res = await fetch('/api/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variation, metadata, pdfSubject })
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'PDF generation failed');
-      }
-
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      const subjectName = pdfSubject || state.generatedData?.metadata?.subject || 'FMGE';
-      a.download = `${subjectName} SET - ${variation.variation_id || (idx + 1)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      btn.classList.remove('loading');
-      btn.classList.add('done');
-      btn.innerHTML = `✓ Downloaded — ${variation.title}`;
-
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.classList.remove('done');
-        btn.innerHTML = `📥 Download PDF — ${variation.title}`;
-      }, 3000);
-
-    } catch (err) {
-      btn.classList.remove('loading');
-      btn.classList.add('error');
-      btn.innerHTML = `✗ Failed — ${err.message.substring(0, 40)}`;
-      btn.disabled = false;
-      setTimeout(() => {
-        btn.classList.remove('error');
-        btn.innerHTML = `📥 Download PDF — ${variation.title}`;
-      }, 4000);
-    }
+// ── Step indicator ─────────────────────────────────────────────────────────────
+function setStep(n, markDone = false) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`step${i}`);
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add(markDone ? 'done' : 'active');
   }
+}
 
-  // ── Step indicator ─────────────────────────────────────────────────────────
-  function setStep(n, markDone = false) {
-    for (let i = 1; i <= 3; i++) {
-      const el = document.getElementById(`step${i}`);
-      el.classList.remove('active', 'done');
-      if (i < n) el.classList.add('done');
-      else if (i === n) {
-        if (markDone) el.classList.add('done');
-        else el.classList.add('active');
-      }
-    }
-  }
+// ── Progress helpers ───────────────────────────────────────────────────────────
+function setProgressPct(pct)   { document.getElementById('genFill').style.width = pct + '%'; }
+function showProgress(wrapId, fillId, labelId, msg) {
+  document.getElementById(wrapId).classList.add('show');
+  document.getElementById(fillId).style.width = '0%';
+  document.getElementById(labelId).textContent = msg;
+}
+function hideProgress(wrapId)  { document.getElementById(wrapId).classList.remove('show'); }
 
-  // ── Progress helpers ───────────────────────────────────────────────────────
-  function showProgress(wrapId, fillId, labelId, msg) {
-    document.getElementById(wrapId).classList.add('show');
-    document.getElementById(fillId).style.width = '0%';
-    document.getElementById(labelId).textContent = msg;
-  }
+// ── Status banner ──────────────────────────────────────────────────────────────
+function showStatus(type, msg) {
+  const el = document.getElementById('statusBanner');
+  el.className   = `status-banner show ${type}`;
+  el.textContent = msg;
+}
+function hideStatus() { document.getElementById('statusBanner').classList.remove('show'); }
 
-  function hideProgress(wrapId) {
-    document.getElementById(wrapId).classList.remove('show');
-  }
+// ── On load: restore previous interrupted session if exists ────────────────────
+window.addEventListener('load', () => {
+  const cp = loadCheckpoint();
+  if (!cp || cp.completedBatches === 0) return;
+  const recovered = cp.sets[0].questions.length;
+  const banner    = document.getElementById('statusBanner');
+  banner.className = 'status-banner show warning';
+  banner.innerHTML = `
+    ⚠ Previous session interrupted — <strong>${recovered} questions</strong> from
+    ${cp.completedBatches}/${cp.totalBatches || '?'} batches saved.
+    &nbsp;
+    <button onclick="restoreCheckpoint()"
+      style="background:var(--navy);color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-weight:600">
+      Load partial results
+    </button>
+    &nbsp;
+    <button onclick="clearCheckpoint();hideStatus();"
+      style="background:none;color:#666;border:1px solid #ccc;padding:4px 10px;border-radius:6px;cursor:pointer">
+      Dismiss
+    </button>`;
+});
 
-  // ── Status banner ──────────────────────────────────────────────────────────
-  function showStatus(type, msg) {
-    const el = document.getElementById('statusBanner');
-    el.className = `status-banner show ${type}`;
-    el.textContent = msg;
-  }
-  function hideStatus() {
-    document.getElementById('statusBanner').classList.remove('show');
-  }
-
-  // ── Utility ────────────────────────────────────────────────────────────────
-  function formatBytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1048576).toFixed(1) + ' MB';
-  }
-
-  // ── On load: check for saved checkpoint ───────────────────────────────────
-  window.addEventListener('load', () => {
-    const cp = loadCheckpoint();
-    if (!cp || cp.completedBatches === 0) return;
-
-    const recovered = cp.sets[0].questions.length;
-    const banner = document.getElementById('statusBanner');
-    banner.className = 'status-banner show warning';
-    banner.innerHTML = `
-      ⚠ Previous session interrupted — <strong>${recovered} questions</strong> from
-      ${cp.completedBatches}/${cp.totalBatches || '?'} batches saved.
-      &nbsp;
-      <button onclick="restoreCheckpoint()" style="background:#0f3460;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-weight:600">Load partial results</button>
-      &nbsp;
-      <button onclick="clearCheckpoint();hideStatus();" style="background:none;color:#666;border:1px solid #ccc;padding:4px 10px;border-radius:6px;cursor:pointer">Dismiss</button>
-    `;
-  });
-
-  function restoreCheckpoint() {
-    const cp = loadCheckpoint();
-    if (!cp) return;
-    const fullData = {
-      metadata: { total_questions: cp.sets[0].questions.length, subject: cp.subject },
-      variations: cp.sets
-    };
-    _renderDone(fullData, document.getElementById('generateBtn'));
-    showStatus('success', `Restored ${fullData.metadata.total_questions} questions from saved checkpoint (${cp.completedBatches}/${cp.totalBatches || '?'} batches completed).`);
-  }
+function restoreCheckpoint() {
+  const cp = loadCheckpoint();
+  if (!cp) return;
+  _renderDone(
+    { metadata: { total_questions: cp.sets[0].questions.length, subject: cp.subject }, variations: cp.sets },
+    document.getElementById('generateBtn')
+  );
+  showStatus('success', `Restored ${cp.sets[0].questions.length} questions from saved checkpoint.`);
+}
 </script>
 </body>
 </html>

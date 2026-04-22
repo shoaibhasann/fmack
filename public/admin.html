@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PYQ Admin — FMGE / NEET PG</title>
+<style>
+  /* ── Reset & Base ──────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --border:    #2a2d3e;
+    --accent:    #4f8ef7;
+    --accent2:   #7c3aed;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --yellow:    #f59e0b;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --radius:    8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ────────────────────────────────────────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "header header"
+      "form   list";
+    min-height: 100vh;
+  }
+
+  /* ── Header ────────────────────────────────────────────────────────────── */
+  .header {
+    grid-area: header;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .header-left h1 { font-size: 18px; font-weight: 700; }
+  .header-left p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .stat-pill {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .stat-pill strong { color: var(--text); }
+
+  /* ── Sidebar form ──────────────────────────────────────────────────────── */
+  .form-panel {
+    grid-area: form;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    height: calc(100vh - 65px);
+    position: sticky;
+    top: 65px;
+  }
+
+  .form-inner {
+    padding: 20px;
+  }
+
+  .form-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Form sections ─────────────────────────────────────────────────────── */
+  .section {
+    margin-bottom: 20px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  /* ── Form controls ─────────────────────────────────────────────────────── */
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    padding: 8px 10px;
+    font-family: inherit;
+    transition: border-color .15s;
+    outline: none;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea { resize: vertical; min-height: 80px; }
+
+  .field { margin-bottom: 12px; }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* Correct option radio row */
+  .correct-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .correct-btn {
+    flex: 1;
+    padding: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    transition: all .15s;
+  }
+
+  .correct-btn.active {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+
+  /* ── Image upload area ─────────────────────────────────────────────────── */
+  .upload-area {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s;
+    position: relative;
+  }
+
+  .upload-area:hover { border-color: var(--accent); }
+
+  .upload-area input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+
+  .upload-area p { font-size: 12px; color: var(--muted); }
+  .upload-area strong { color: var(--accent); font-size: 13px; }
+
+  .img-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .img-thumb {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .img-thumb button {
+    position: absolute;
+    top: 3px; right: 3px;
+    background: rgba(0,0,0,.7);
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    font-size: 11px;
+    cursor: pointer;
+    line-height: 18px;
+    text-align: center;
+    padding: 0;
+  }
+
+  /* Upload status badge */
+  .upload-status {
+    font-size: 11px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .upload-status.uploading { background: #1e3a5f; color: var(--accent); }
+  .upload-status.done      { background: #14532d; color: var(--green);  }
+  .upload-status.error     { background: #450a0a; color: var(--red);    }
+
+  /* ── Submit buttons ────────────────────────────────────────────────────── */
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .btn {
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+    flex: 1;
+  }
+
+  .btn:hover { opacity: .85; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-primary  { background: var(--accent);  color: #fff; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-danger   { background: var(--red);     color: #fff; }
+
+  /* ── Question list panel ───────────────────────────────────────────────── */
+  .list-panel {
+    grid-area: list;
+    padding: 20px;
+    overflow-y: auto;
+    height: calc(100vh - 65px);
+  }
+
+  .list-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .list-toolbar select,
+  .list-toolbar input {
+    width: auto;
+    flex: 1;
+    min-width: 140px;
+    max-width: 200px;
+  }
+
+  .list-count {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  /* ── Question cards ────────────────────────────────────────────────────── */
+  .q-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    transition: border-color .15s;
+  }
+
+  .q-card:hover { border-color: var(--accent); }
+
+  .q-card-body { flex: 1; min-width: 0; }
+
+  .q-meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+    align-items: center;
+  }
+
+  .badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .badge-source  { background: #1e3a5f; color: var(--accent); }
+  .badge-subject { background: #2d1b69; color: #a78bfa; }
+  .badge-diff-easy   { background: #14532d; color: var(--green); }
+  .badge-diff-medium { background: #78350f; color: var(--yellow); }
+  .badge-diff-hard   { background: #450a0a; color: var(--red); }
+  .badge-img     { background: #1e3a5f; color: #7dd3fc; }
+
+  .q-stem {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .q-answer {
+    font-size: 11px;
+    color: var(--green);
+    margin-top: 4px;
+  }
+
+  .q-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-sm {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text);
+    transition: all .15s;
+    white-space: nowrap;
+  }
+
+  .btn-sm:hover         { background: var(--border); }
+  .btn-sm.edit:hover    { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.delete:hover  { border-color: var(--red); color: var(--red); }
+
+  /* ── Pagination ────────────────────────────────────────────────────────── */
+  .pagination {
+    display: flex;
+    gap: 6px;
+    margin-top: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .page-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .page-btn:hover, .page-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── Toast notifications ───────────────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .toast-item {
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    animation: slideIn .2s ease;
+    pointer-events: all;
+    max-width: 320px;
+  }
+
+  .toast-item.success { background: #14532d; color: var(--green); border: 1px solid var(--green); }
+  .toast-item.error   { background: #450a0a; color: var(--red);   border: 1px solid var(--red);   }
+  .toast-item.info    { background: #1e3a5f; color: var(--accent); border: 1px solid var(--accent); }
+
+  @keyframes slideIn {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+
+  /* ── Empty state ───────────────────────────────────────────────────────── */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty h3 { font-size: 16px; margin-bottom: 8px; }
+  .empty p  { font-size: 13px; }
+
+  /* ── Loading spinner ───────────────────────────────────────────────────── */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Edit mode indicator ───────────────────────────────────────────────── */
+  .edit-banner {
+    background: #1e3a5f;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .edit-banner.visible { display: flex; }
+
+  .edit-banner button {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    width: auto;
+  }
+
+  /* ── Source mode toggle ──────────────────────────────────────────────────── */
+  .source-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .src-mode-btn {
+    flex: 1;
+    padding: 6px 0;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+    width: auto;
+  }
+  .src-mode-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .custom-src-panel { display: none; }
+  .custom-src-panel.visible { display: block; }
+
+  /* ── Table Builder ───────────────────────────────────────────────────────── */
+  .tbl-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .tbl-section-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tbl-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+  .tbl-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .tbl-item-head {
+    background: var(--bg);
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .tbl-title { color: var(--accent2); font-size: 11px; }
+  .tbl-remove-btn {
+    background: none;
+    border: 1px solid var(--red);
+    color: var(--red);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    width: auto;
+  }
+  .tbl-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+  .tbl-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .tbl-row-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    width: 26px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .tbl-cell {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 5px 7px;
+    font-family: inherit;
+    outline: none;
+    min-width: 0;
+  }
+  .tbl-cell:focus { border-color: var(--accent); }
+  .tbl-cell.header-cell { border-color: var(--accent2); font-weight: 600; }
+  .tbl-row-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0 3px;
+    width: auto;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .tbl-row-del:hover { color: var(--red); }
+  .tbl-footer {
+    display: flex;
+    gap: 5px;
+    padding: 7px 10px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .tbl-foot-btn {
+    flex: 1;
+    padding: 4px 0;
+    font-size: 11px;
+    font-weight: 600;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    cursor: pointer;
+    width: auto;
+    transition: all .15s;
+  }
+  .tbl-foot-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .add-table-btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .add-table-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-left">
+      <h1>PYQ Question Manager</h1>
+      <p>FMGE &amp; NEET PG — Previous Year Questions</p>
+    </div>
+    <div id="stats" class="stats">
+      <div class="stat-pill">Loading...</div>
+    </div>
+  </header>
+
+  <!-- ── Left: Entry Form ────────────────────────────────────────────────── -->
+  <aside class="form-panel">
+    <div class="form-inner">
+
+      <!-- Edit mode banner — shown when editing an existing question -->
+      <div id="editBanner" class="edit-banner">
+        ✏️ Editing question
+        <button onclick="cancelEdit()">Cancel</button>
+      </div>
+
+      <div class="form-title" id="formTitle">Add New Question</div>
+
+      <form id="questionForm" onsubmit="submitQuestion(event)">
+
+        <!-- ── Section 1: Exam Source ─────────────────────────────────── -->
+        <div class="section">
+          <div class="section-label">Exam Source</div>
+
+          <!-- Toggle: Predefined | Custom -->
+          <div class="source-toggle">
+            <button type="button" class="src-mode-btn active" id="srcModePredef"
+              onclick="setSrcMode('predefined')">Predefined</button>
+            <button type="button" class="src-mode-btn" id="srcModeCustom"
+              onclick="setSrcMode('custom')">+ Custom</button>
+          </div>
+
+          <!-- Predefined panel -->
+          <div id="predefPanel">
+            <div class="field">
+              <label>Exam Paper *</label>
+              <select id="source_code" name="source_code" required>
+                <option value="">Select exam...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Custom exam source panel -->
+          <div id="customSrcPanel" class="custom-src-panel">
+            <div class="options-grid">
+              <div class="field">
+                <label>Exam Type *</label>
+                <select id="cst_exam_type" onchange="autoGenSourceCode()">
+                  <option value="FMGE">FMGE</option>
+                  <option value="NEET_PG">NEET PG</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Year *</label>
+                <input type="number" id="cst_year" min="2000" max="2035"
+                  placeholder="2026" oninput="autoGenSourceCode()">
+              </div>
+            </div>
+            <div class="options-grid">
+              <div class="field">
+                <label>Session (optional)</label>
+                <input type="text" id="cst_session" placeholder="june / december"
+                  oninput="autoGenSourceCode()">
+              </div>
+              <div class="field">
+                <label>Source Code *</label>
+                <input type="text" id="cst_source_code" placeholder="fmge_june_2026">
+              </div>
+            </div>
+            <div class="field">
+              <label>Display Label *</label>
+              <input type="text" id="cst_label" placeholder="FMGE June 2026">
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Section 2: Classification ─────────────────────────────── -->
+        <div class="section">
+          <div class="section-label">Classification</div>
+          <div class="options-grid">
+            <div class="field">
+              <label>Subject</label>
+              <select id="subject" name="subject">
+                <option value="">Select...</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Difficulty</label>
+              <select id="difficulty" name="difficulty">
+                <option value="medium" selected>Medium</option>
+                <option value="easy">Easy</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
+          <div class="options-grid">
+            <div class="field">
+              <label>Subscription Type</label>
+              <select id="subscription_type" name="subscription_type">
+                <option value="free" selected>Free</option>
+                <option value="premium">Premium</option>
+                <option value="pro">Pro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Topic (optional)</label>
+              <input type="text" id="topic" name="topic" placeholder="e.g. Cranial Nerves">
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Section 3: Question ────────────────────────────────────── -->
+        <div class="section">
+          <div class="section-label">Question</div>
+          <div class="field">
+            <label>Question Stem *</label>
+            <textarea id="stem" name="stem" rows="4"
+              placeholder="A 45-year-old male presents with..." required></textarea>
+          </div>
+
+          <!-- Question image upload (single, optional) -->
+          <div class="field">
+            <label>Question Diagram (optional)</label>
+            <div class="upload-area" id="qImgArea">
+              <input type="file" id="qImgInput" accept="image/*" onchange="uploadQuestionImage(this)">
+              <strong>Click to upload</strong>
+              <p>PNG, JPG, WEBP — max 10MB</p>
+            </div>
+            <span id="qImgStatus" class="upload-status" style="display:none"></span>
+            <div id="qImgPreview" class="img-preview"></div>
+            <!-- Hidden field stores the R2 URL after upload -->
+            <input type="hidden" id="question_image_url" name="question_image_url">
+          </div>
+        </div>
+
+        <!-- ── Section 4: Options ─────────────────────────────────────── -->
+        <div class="section">
+          <div class="section-label">Options</div>
+          <div class="options-grid">
+            <div class="field">
+              <label>Option A *</label>
+              <input type="text" id="option_a" name="option_a" placeholder="Option A" required>
+            </div>
+            <div class="field">
+              <label>Option B *</label>
+              <input type="text" id="option_b" name="option_b" placeholder="Option B" required>
+            </div>
+            <div class="field">
+              <label>Option C *</label>
+              <input type="text" id="option_c" name="option_c" placeholder="Option C" required>
+            </div>
+            <div class="field">
+              <label>Option D *</label>
+              <input type="text" id="option_d" name="option_d" placeholder="Option D" required>
+            </div>
+          </div>
+          <div class="field">
+            <label>Correct Answer *</label>
+            <div class="correct-row">
+              <button type="button" class="correct-btn" data-opt="a" onclick="selectCorrect('a')">A</button>
+              <button type="button" class="correct-btn" data-opt="b" onclick="selectCorrect('b')">B</button>
+              <button type="button" class="correct-btn" data-opt="c" onclick="selectCorrect('c')">C</button>
+              <button type="button" class="correct-btn" data-opt="d" onclick="selectCorrect('d')">D</button>
+            </div>
+            <input type="hidden" id="correct_option" name="correct_option" required>
+          </div>
+        </div>
+
+        <!-- ── Section 5: Explanation ─────────────────────────────────── -->
+        <div class="section">
+          <div class="section-label">Explanation</div>
+          <div class="field">
+            <label>Explanation Text (markdown supported)</label>
+            <textarea id="explanation_text" name="explanation_text" rows="5"
+              placeholder="The answer is A because...&#10;&#10;**Key point:** ..."></textarea>
+          </div>
+
+          <!-- Explanation images (multiple) -->
+          <div class="field">
+            <label>Explanation Diagrams (optional, multiple)</label>
+            <div class="upload-area" id="expImgArea">
+              <input type="file" id="expImgInput" accept="image/*" multiple
+                onchange="uploadExplanationImages(this)">
+              <strong>Click to upload</strong>
+              <p>Multiple images allowed</p>
+            </div>
+            <span id="expImgStatus" class="upload-status" style="display:none"></span>
+            <div id="expImgPreview" class="img-preview"></div>
+            <!-- Stores array of R2 URLs as JSON string -->
+            <input type="hidden" id="explanation_image_urls" name="explanation_image_urls" value="[]">
+          </div>
+        </div>
+
+        <!-- ── Section 6: Explanation Tables ────────────────────────── -->
+        <div class="section">
+          <div class="section-label">Explanation Tables</div>
+          <div class="field">
+            <div class="tbl-section-header">
+              <span class="tbl-section-label">Add comparison / data tables to this explanation</span>
+            </div>
+            <div id="tblList" class="tbl-list"></div>
+            <button type="button" class="add-table-btn" onclick="addTable()">+ Add Table Block</button>
+          </div>
+        </div>
+
+        <!-- ── Submit ─────────────────────────────────────────────────── -->
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary" id="submitBtn">
+            Add Question
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="resetForm()">
+            Clear
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </aside>
+
+  <!-- ── Right: Question List ────────────────────────────────────────────── -->
+  <main class="list-panel">
+
+    <!-- Filters toolbar -->
+    <div class="list-toolbar">
+      <select id="filterSource" onchange="loadQuestions(1)">
+        <option value="">All Sources</option>
+      </select>
+      <select id="filterSubject" onchange="loadQuestions(1)">
+        <option value="">All Subjects</option>
+      </select>
+      <select id="filterSubscription" onchange="loadQuestions(1)">
+        <option value="">All Tiers</option>
+        <option value="free">Free</option>
+        <option value="premium">Premium</option>
+        <option value="pro">Pro</option>
+      </select>
+      <input type="text" id="filterSearch" placeholder="Search stem..."
+        oninput="debounceSearch()" style="max-width:180px">
+      <span class="list-count" id="listCount"></span>
+    </div>
+
+    <!-- Question cards -->
+    <div id="qList" class="q-list">
+      <div class="empty">
+        <h3>No questions yet</h3>
+        <p>Add your first PYQ question using the form on the left.</p>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" class="pagination"></div>
+
+  </main>
+
+</div>
+
+<!-- Toast container -->
+<div id="toast"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+// Tracks current edit mode, explantion image URLs, and pagination state
+const state = {
+  editId:               null,
+  explanationImageUrls: [],
+  explanationTables:    [],   // [{headers: [...], rows: [[...]]}]
+  srcMode:              'predefined',  // 'predefined' | 'custom'
+  currentPage:          1,
+  totalPages:           1,
+  searchTimer:          null,
+};
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+// On load: fetch sources/subjects, populate dropdowns, load first page
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  await loadQuestions(1);
+});
+
+// ── loadConfig ────────────────────────────────────────────────────────────────
+// Fetches exam sources and subjects from the server, populates dropdowns.
+async function loadConfig() {
+  const data = await api('/api/pyq/sources');
+
+  // Populate source dropdown in form
+  const srcSel = document.getElementById('source_code');
+  data.sources.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value       = s.source_code;
+    opt.textContent = `${s.label}${s.count ? ` (${s.count})` : ''}`;
+    srcSel.appendChild(opt);
+  });
+
+  // Populate subject dropdown in form
+  const subjSel = document.getElementById('subject');
+  data.subjects.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    subjSel.appendChild(opt);
+  });
+
+  // Populate filter dropdowns in list panel
+  const filterSrc = document.getElementById('filterSource');
+  data.sources.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value       = s.source_code;
+    opt.textContent = `${s.label || s.source_code}${s.count ? ` (${s.count})` : ''}`;
+    filterSrc.appendChild(opt);
+  });
+
+  const filterSubj = document.getElementById('filterSubject');
+  data.subjects.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    filterSubj.appendChild(opt);
+  });
+
+  // Header stats: totals from live DB stats
+  const statMap    = {};
+  (data.stats || []).forEach(s => {
+    statMap[s.exam_type] = (statMap[s.exam_type] || 0) + s.count;
+  });
+  const grandTotal = Object.values(statMap).reduce((a, b) => a + b, 0);
+  const statPills  = Object.entries(statMap)
+    .map(([type, n]) => `<div class="stat-pill">${type.replace('_', ' ')}: <strong>${n}</strong></div>`)
+    .join('');
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-pill">Total: <strong>${grandTotal}</strong></div>
+    ${statPills}
+    ${!data.r2_configured ? '<div class="stat-pill" style="color:#f59e0b">⚠ R2 not configured</div>' : ''}
+  `;
+}
+
+// ── loadQuestions ─────────────────────────────────────────────────────────────
+// Fetches paginated question list with current filters and renders cards.
+async function loadQuestions(page = 1) {
+  state.currentPage = page;
+
+  const source       = document.getElementById('filterSource').value;
+  const subject      = document.getElementById('filterSubject').value;
+  const subscription = document.getElementById('filterSubscription').value;
+  const search       = document.getElementById('filterSearch').value;
+
+  const params = new URLSearchParams({ page, limit: 20 });
+  if (source)       params.set('exam_source',       source);
+  if (subject)      params.set('subject',            subject);
+  if (subscription) params.set('subscription_type', subscription);
+  if (search)       params.set('search',             search);
+
+  document.getElementById('qList').innerHTML =
+    `<div class="empty"><div class="spinner"></div><p style="margin-top:12px">Loading...</p></div>`;
+
+  const data = await api(`/api/pyq/questions?${params}`);
+
+  state.totalPages = data.pages || 1;
+
+  document.getElementById('listCount').textContent =
+    `${data.total} question${data.total !== 1 ? 's' : ''}`;
+
+  renderQuestions(data.questions);
+  renderPagination(data.total, data.pages, page);
+}
+
+// ── renderQuestions ───────────────────────────────────────────────────────────
+// Builds question card HTML from the API response array.
+function renderQuestions(questions) {
+  const container = document.getElementById('qList');
+
+  if (!questions.length) {
+    container.innerHTML = `
+      <div class="empty">
+        <h3>No questions found</h3>
+        <p>Try adjusting the filters or add a new question.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = questions.map(q => {
+    const diffClass = `badge-diff-${q.difficulty || 'medium'}`;
+    const stemPreview = (q.stem || '').substring(0, 120) + (q.stem?.length > 120 ? '…' : '');
+    const correctText = q[`option_${q.correct_option}`] || q.correct_option?.toUpperCase();
+
+    return `
+    <div class="q-card" id="qcard-${q.id}">
+      <div class="q-card-body">
+        <div class="q-meta">
+          <span class="badge badge-source">${q.exam_source}</span>
+          ${q.subscription_type && q.subscription_type !== 'free'
+            ? `<span class="badge" style="background:#3b1f6e;color:#c084fc;border:1px solid #7c3aed">${q.subscription_type}</span>`
+            : ''}
+          ${q.subject ? `<span class="badge badge-subject">${q.subject}</span>` : ''}
+          <span class="badge ${diffClass}">${q.difficulty || 'medium'}</span>
+          ${q.question_image_url ? '<span class="badge badge-img">📷 img</span>' : ''}
+          ${(q.explanation_image_urls?.length) ? `<span class="badge badge-img">🖼 ${q.explanation_image_urls.length} exp</span>` : ''}
+          ${(q.explanation_tables?.length)     ? `<span class="badge badge-img">⊞ ${q.explanation_tables.length} tbl</span>`        : ''}
+        </div>
+        <div class="q-stem">${escHtml(stemPreview)}</div>
+        <div class="q-answer">✓ ${escHtml(correctText || '')}</div>
+      </div>
+      <div class="q-actions">
+        <button class="btn-sm edit"   onclick="startEdit('${q.id}')">Edit</button>
+        <button class="btn-sm delete" onclick="deleteQuestion('${q.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── renderPagination ──────────────────────────────────────────────────────────
+function renderPagination(total, pages, current) {
+  const container = document.getElementById('pagination');
+  if (pages <= 1) { container.innerHTML = ''; return; }
+
+  const buttons = [];
+  buttons.push(`<button class="page-btn" onclick="loadQuestions(${current-1})"
+    ${current <= 1 ? 'disabled' : ''}>← Prev</button>`);
+
+  // Show a window of pages around current
+  const start = Math.max(1, current - 2);
+  const end   = Math.min(pages, current + 2);
+  for (let p = start; p <= end; p++) {
+    buttons.push(`<button class="page-btn ${p === current ? 'active' : ''}"
+      onclick="loadQuestions(${p})">${p}</button>`);
+  }
+
+  buttons.push(`<button class="page-btn" onclick="loadQuestions(${current+1})"
+    ${current >= pages ? 'disabled' : ''}>Next →</button>`);
+
+  container.innerHTML = buttons.join('');
+}
+
+// ─── Form: Submit (Create / Update) ──────────────────────────────────────────
+async function submitQuestion(e) {
+  e.preventDefault();
+
+  if (!document.getElementById('correct_option').value) {
+    return toast('Select the correct answer (A/B/C/D)', 'error');
+  }
+
+  // Resolve source_code + optional custom_source
+  let source_code, custom_source = null;
+  if (state.srcMode === 'custom') {
+    source_code       = document.getElementById('cst_source_code').value.trim();
+    const year        = parseInt(document.getElementById('cst_year').value);
+    if (!source_code) return toast('Source Code is required for custom exam', 'error');
+    if (!year)        return toast('Year is required for custom exam', 'error');
+    custom_source = {
+      exam_type: document.getElementById('cst_exam_type').value,
+      year,
+      session:   document.getElementById('cst_session').value.trim()  || null,
+      label:     document.getElementById('cst_label').value.trim()    || source_code,
+    };
+  } else {
+    source_code = document.getElementById('source_code').value;
+    if (!source_code) return toast('Select an exam paper', 'error');
+  }
+
+  // Sync any unsaved table cell text to state before submitting
+  syncTableData();
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled    = true;
+  btn.textContent = state.editId ? 'Saving...' : 'Adding...';
+
+  const body = {
+    source_code,
+    custom_source,
+    stem:                   document.getElementById('stem').value,
+    option_a:               document.getElementById('option_a').value,
+    option_b:               document.getElementById('option_b').value,
+    option_c:               document.getElementById('option_c').value,
+    option_d:               document.getElementById('option_d').value,
+    correct_option:         document.getElementById('correct_option').value,
+    question_image_url:     document.getElementById('question_image_url').value || null,
+    explanation_text:       document.getElementById('explanation_text').value   || null,
+    explanation_image_urls: state.explanationImageUrls.length ? state.explanationImageUrls : null,
+    explanation_tables:     state.explanationTables.length   ? state.explanationTables     : null,
+    subscription_type:      document.getElementById('subscription_type').value,
+    subject:                document.getElementById('subject').value   || null,
+    topic:                  document.getElementById('topic').value     || null,
+    difficulty:             document.getElementById('difficulty').value,
+  };
+
+  const url    = state.editId ? `/api/pyq/questions/${state.editId}` : '/api/pyq/questions';
+  const method = state.editId ? 'PUT' : 'POST';
+
+  const result = await api(url, { method, body: JSON.stringify(body) });
+
+  btn.disabled    = false;
+  btn.textContent = state.editId ? 'Save Changes' : 'Add Question';
+
+  if (result.error) return toast(result.error, 'error');
+
+  toast(state.editId ? 'Question updated!' : 'Question added!', 'success');
+  resetForm();
+  await loadQuestions(state.currentPage);
+  await loadConfig();
+}
+
+// ─── Form: Edit ───────────────────────────────────────────────────────────────
+async function startEdit(id) {
+  const q = await api(`/api/pyq/questions/${id}`);
+  if (q.error) return toast(q.error, 'error');
+
+  state.editId               = id;
+  state.explanationImageUrls = q.explanation_image_urls || [];
+  state.explanationTables    = q.explanation_tables     || [];
+
+  // Populate main fields
+  document.getElementById('stem').value             = q.stem             || '';
+  document.getElementById('option_a').value         = q.option_a         || '';
+  document.getElementById('option_b').value         = q.option_b         || '';
+  document.getElementById('option_c').value         = q.option_c         || '';
+  document.getElementById('option_d').value         = q.option_d         || '';
+  document.getElementById('explanation_text').value  = q.explanation_text  || '';
+  document.getElementById('subject').value           = q.subject           || '';
+  document.getElementById('topic').value             = q.topic             || '';
+  document.getElementById('difficulty').value        = q.difficulty        || 'medium';
+  document.getElementById('subscription_type').value = q.subscription_type || 'free';
+
+  selectCorrect(q.correct_option);
+
+  // Populate source — check if predefined list knows this exam_source
+  const srcSel   = document.getElementById('source_code');
+  const isPredef = Array.from(srcSel.options).some(o => o.value === q.exam_source);
+  if (isPredef) {
+    setSrcMode('predefined');
+    srcSel.value = q.exam_source;
+  } else {
+    setSrcMode('custom');
+    document.getElementById('cst_source_code').value = q.exam_source || '';
+    document.getElementById('cst_exam_type').value   = q.exam_type   || 'FMGE';
+    document.getElementById('cst_year').value        = q.year        || '';
+    document.getElementById('cst_session').value     = q.session     || '';
+    document.getElementById('cst_label').value       = q.exam_source || '';
+  }
+
+  // Show existing question image
+  if (q.question_image_url) {
+    document.getElementById('question_image_url').value = q.question_image_url;
+    document.getElementById('qImgPreview').innerHTML =
+      imageThumb(q.question_image_url, () => clearQuestionImage());
+  }
+
+  // Show existing explanation images and tables
+  renderExplanationPreviews();
+  renderTableBuilders();
+
+  document.getElementById('editBanner').classList.add('visible');
+  document.getElementById('formTitle').textContent = 'Edit Question';
+  document.getElementById('submitBtn').textContent = 'Save Changes';
+
+  document.querySelector('.form-panel').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── Form: Cancel Edit / Reset ────────────────────────────────────────────────
+function cancelEdit() { resetForm(); }
+
+function resetForm() {
+  state.editId               = null;
+  state.explanationImageUrls = [];
+  state.explanationTables    = [];
+
+  document.getElementById('questionForm').reset();
+  document.getElementById('correct_option').value         = '';
+  document.getElementById('question_image_url').value     = '';
+  document.getElementById('qImgPreview').innerHTML        = '';
+  document.getElementById('expImgPreview').innerHTML      = '';
+  document.getElementById('explanation_image_urls').value = '[]';
+  document.getElementById('qImgStatus').style.display     = 'none';
+  document.getElementById('expImgStatus').style.display   = 'none';
+  document.querySelectorAll('.correct-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('editBanner').classList.remove('visible');
+  document.getElementById('formTitle').textContent = 'Add New Question';
+  document.getElementById('submitBtn').textContent = 'Add Question';
+
+  setSrcMode('predefined');
+  renderTableBuilders();
+}
+
+// ─── Form: Correct option selector ───────────────────────────────────────────
+function selectCorrect(opt) {
+  document.querySelectorAll('.correct-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.opt === opt.toLowerCase());
+  });
+  document.getElementById('correct_option').value = opt.toLowerCase();
+}
+
+// ─── Image Upload: Question image ─────────────────────────────────────────────
+// Uploads a single image and stores the R2 URL in the hidden field.
+async function uploadQuestionImage(input) {
+  if (!input.files[0]) return;
+  const status = document.getElementById('qImgStatus');
+
+  showStatus(status, 'Uploading...', 'uploading');
+
+  const url = await uploadImage(input.files[0], 'questions');
+  if (!url) return;
+
+  document.getElementById('question_image_url').value = url;
+  document.getElementById('qImgPreview').innerHTML =
+    imageThumb(url, () => clearQuestionImage());
+
+  showStatus(status, 'Uploaded!', 'done');
+  input.value = '';
+}
+
+function clearQuestionImage() {
+  document.getElementById('question_image_url').value = '';
+  document.getElementById('qImgPreview').innerHTML = '';
+  document.getElementById('qImgStatus').style.display = 'none';
+}
+
+// ─── Image Upload: Explanation images (multiple) ──────────────────────────────
+// Uploads each file sequentially and accumulates R2 URLs in state.
+async function uploadExplanationImages(input) {
+  if (!input.files.length) return;
+  const status = document.getElementById('expImgStatus');
+  const files  = Array.from(input.files);
+
+  showStatus(status, `Uploading ${files.length} image(s)...`, 'uploading');
+
+  for (const file of files) {
+    const url = await uploadImage(file, 'explanations');
+    if (url) state.explanationImageUrls.push(url);
+  }
+
+  renderExplanationPreviews();
+  showStatus(status, `${state.explanationImageUrls.length} image(s) ready`, 'done');
+  input.value = '';
+}
+
+function renderExplanationPreviews() {
+  const container = document.getElementById('expImgPreview');
+  container.innerHTML = state.explanationImageUrls.map((url, i) =>
+    imageThumb(url, () => removeExpImage(i))
+  ).join('');
+}
+
+function removeExpImage(index) {
+  state.explanationImageUrls.splice(index, 1);
+  renderExplanationPreviews();
+}
+
+// ─── Core image upload helper ─────────────────────────────────────────────────
+// POSTs a file to /api/pyq/upload-image and returns the R2 URL (or null on error).
+async function uploadImage(file, folder) {
+  const form = new FormData();
+  form.append('image', file);
+  try {
+    const res  = await fetch(`/api/pyq/upload-image?folder=${folder}`, { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) { toast(data.error, 'error'); return null; }
+    return data.url;
+  } catch (err) {
+    toast('Upload failed: ' + err.message, 'error');
+    return null;
+  }
+}
+
+// ─── Delete question ──────────────────────────────────────────────────────────
+async function deleteQuestion(id) {
+  if (!confirm('Delete this question? This cannot be undone.')) return;
+
+  const result = await api(`/api/pyq/questions/${id}`, { method: 'DELETE' });
+  if (result.error) return toast(result.error, 'error');
+
+  toast('Question deleted', 'info');
+  await loadQuestions(state.currentPage);
+  await loadConfig();
+}
+
+// ─── Debounced search ─────────────────────────────────────────────────────────
+function debounceSearch() {
+  clearTimeout(state.searchTimer);
+  state.searchTimer = setTimeout(() => loadQuestions(1), 400);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Generic API fetch — handles JSON + error normalization
+async function api(url, opts = {}) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      ...opts,
+    });
+    return await res.json();
+  } catch (err) {
+    toast('Network error: ' + err.message, 'error');
+    return { error: err.message };
+  }
+}
+
+// Build an image thumbnail HTML with a remove button
+function imageThumb(url, onRemove) {
+  const id = 'img_' + Math.random().toString(36).slice(2);
+  // Use setTimeout to attach the click handler after DOM insertion
+  setTimeout(() => {
+    const btn = document.getElementById(id + '_btn');
+    if (btn) btn.onclick = onRemove;
+  }, 0);
+  return `
+    <div class="img-thumb">
+      <img src="${url}" alt="diagram">
+      <button type="button" id="${id}_btn" title="Remove">✕</button>
+    </div>`;
+}
+
+// Show/hide an upload status badge
+function showStatus(el, text, type) {
+  el.textContent   = text;
+  el.className     = `upload-status ${type}`;
+  el.style.display = 'inline-block';
+  if (type === 'done') setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+// Escape HTML to prevent XSS when rendering question text in cards
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Toast notification
+function toast(msg, type = 'info') {
+  const el  = document.createElement('div');
+  el.className    = `toast-item ${type}`;
+  el.textContent  = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ─── Source mode toggle ───────────────────────────────────────────────────────
+function setSrcMode(mode) {
+  state.srcMode = mode;
+  document.getElementById('srcModePredef').classList.toggle('active', mode === 'predefined');
+  document.getElementById('srcModeCustom').classList.toggle('active', mode === 'custom');
+  document.getElementById('predefPanel').style.display = mode === 'predefined' ? '' : 'none';
+  document.getElementById('customSrcPanel').classList.toggle('visible', mode === 'custom');
+  document.getElementById('source_code').required = (mode === 'predefined');
+}
+
+function autoGenSourceCode() {
+  const type    = document.getElementById('cst_exam_type').value.toLowerCase().replace('_pg', '_pg');
+  const year    = document.getElementById('cst_year').value.trim();
+  const session = document.getElementById('cst_session').value.trim().toLowerCase().replace(/\s+/g, '_');
+  document.getElementById('cst_source_code').value =
+    [type, session, year].filter(Boolean).join('_');
+  const typeLabel    = document.getElementById('cst_exam_type').value.replace('_', ' ');
+  const sessionLabel = document.getElementById('cst_session').value.trim();
+  document.getElementById('cst_label').value =
+    [typeLabel, sessionLabel, year].filter(Boolean).join(' ');
+}
+
+// ─── Table Builder ────────────────────────────────────────────────────────────
+function syncTableData() {
+  state.explanationTables.forEach((t, tIdx) => {
+    document.querySelectorAll(`.tbl-header-cell[data-t="${tIdx}"]`)
+      .forEach((inp, cIdx) => { t.headers[cIdx] = inp.value; });
+    t.rows.forEach((row, rIdx) => {
+      document.querySelectorAll(`.tbl-data-cell[data-t="${tIdx}"][data-r="${rIdx}"]`)
+        .forEach((inp, cIdx) => { row[cIdx] = inp.value; });
+    });
+  });
+}
+
+function addTable() {
+  state.explanationTables.push({ headers: ['', ''], rows: [['', '']] });
+  renderTableBuilders();
+}
+
+function removeTable(idx) {
+  syncTableData();
+  state.explanationTables.splice(idx, 1);
+  renderTableBuilders();
+}
+
+function addRow(tIdx) {
+  syncTableData();
+  const cols = state.explanationTables[tIdx].headers.length;
+  state.explanationTables[tIdx].rows.push(Array(cols).fill(''));
+  renderTableBuilders();
+}
+
+function removeRow(tIdx, rIdx) {
+  syncTableData();
+  if (state.explanationTables[tIdx].rows.length <= 1) return;
+  state.explanationTables[tIdx].rows.splice(rIdx, 1);
+  renderTableBuilders();
+}
+
+function addColumn(tIdx) {
+  syncTableData();
+  state.explanationTables[tIdx].headers.push('');
+  state.explanationTables[tIdx].rows.forEach(row => row.push(''));
+  renderTableBuilders();
+}
+
+function removeColumn(tIdx) {
+  syncTableData();
+  const t = state.explanationTables[tIdx];
+  if (t.headers.length <= 1) return;
+  t.headers.pop();
+  t.rows.forEach(row => row.pop());
+  renderTableBuilders();
+}
+
+function renderTableBuilders() {
+  const container = document.getElementById('tblList');
+  if (!state.explanationTables.length) { container.innerHTML = ''; return; }
+
+  container.innerHTML = state.explanationTables.map((t, tIdx) => `
+    <div class="tbl-item">
+      <div class="tbl-item-head">
+        <span class="tbl-title">TABLE ${tIdx + 1} &mdash; ${t.headers.length} columns</span>
+        <button type="button" class="tbl-remove-btn" onclick="removeTable(${tIdx})">Remove</button>
+      </div>
+      <div class="tbl-body">
+        <div class="tbl-row">
+          <span class="tbl-row-label" style="color:var(--accent2)">HDR</span>
+          ${t.headers.map((h, cIdx) => `
+            <input type="text"
+              class="tbl-cell header-cell tbl-header-cell"
+              data-t="${tIdx}" data-c="${cIdx}"
+              value="${escHtml(h)}"
+              placeholder="Column ${cIdx + 1}">`).join('')}
+          <span style="width:18px;flex-shrink:0"></span>
+        </div>
+        ${t.rows.map((row, rIdx) => `
+          <div class="tbl-row">
+            <span class="tbl-row-label">${rIdx + 1}</span>
+            ${row.map((cell, cIdx) => `
+              <input type="text"
+                class="tbl-cell tbl-data-cell"
+                data-t="${tIdx}" data-r="${rIdx}" data-c="${cIdx}"
+                value="${escHtml(cell)}"
+                placeholder="—">`).join('')}
+            <button type="button" class="tbl-row-del"
+              onclick="removeRow(${tIdx},${rIdx})">✕</button>
+          </div>`).join('')}
+      </div>
+      <div class="tbl-footer">
+        <button type="button" class="tbl-foot-btn"
+          onclick="addRow(${tIdx})">+ Row</button>
+        <button type="button" class="tbl-foot-btn"
+          onclick="addColumn(${tIdx})">+ Column</button>
+        ${t.headers.length > 1
+          ? `<button type="button" class="tbl-foot-btn" style="color:var(--red)"
+               onclick="removeColumn(${tIdx})">− Column</button>`
+          : ''}
+      </div>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>

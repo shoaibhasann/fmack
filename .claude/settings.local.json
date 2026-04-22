@@ -27,7 +27,15 @@
       "Bash(curl -s \"https://huggingface.co/api/datasets/openlifescienceai/medmcqa/parquet/default/train\")",
       "Bash(curl -s \"https://huggingface.co/api/datasets/openlifescienceai/medmcqa/parquet/default/validation\")",
       "Bash(curl -s \"https://huggingface.co/api/datasets/openlifescienceai/medmcqa/parquet/default/test\")",
-      "Bash(curl -s \"http://localhost:3000/api/review/questions?page=1&limit=3\")"
+      "Bash(curl -s \"http://localhost:3000/api/review/questions?page=1&limit=3\")",
+      "Bash(wc -l /Users/shoaib/fmack/public/*.html)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('/Users/shoaib/fmack/data/questions_premium.json'\\)\\); print\\(type\\(d\\), len\\(d\\) if isinstance\\(d, list\\) else list\\(d.keys\\(\\)\\)[:5]\\)\")",
+      "Bash(python3:*)",
+      "Bash(xargs kill:*)",
+      "Bash(curl -s http://localhost:3003/api/pyq/sources)",
+      "Bash(curl -s -X POST http://localhost:3003/api/pyq/questions -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s \"http://localhost:3003/api/pyq/questions?limit=10\")",
+      "Bash(curl -s \"http://localhost:3003/api/pyq/questions?limit=5\")"
     ]
   }
 }
