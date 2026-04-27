@@ -35,7 +35,9 @@
       "Bash(curl -s http://localhost:3003/api/pyq/sources)",
       "Bash(curl -s -X POST http://localhost:3003/api/pyq/questions -H 'Content-Type: application/json' -d '{ *)",
       "Bash(curl -s \"http://localhost:3003/api/pyq/questions?limit=10\")",
-      "Bash(curl -s \"http://localhost:3003/api/pyq/questions?limit=5\")"
+      "Bash(curl -s \"http://localhost:3003/api/pyq/questions?limit=5\")",
+      "Bash(rm -f server.js db.js migrate.js migrate-schema.js migrate-v2.js package-lock.json)",
+      "Bash(rm -rf config controllers helpers routes public services assets scripts data temp uploads node_modules)"
     ]
   }
 }

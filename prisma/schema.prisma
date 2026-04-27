@@ -1,0 +1,11 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Schema defined here once db architecture is finalised ───────────────────
+// Tables will be added in the next step after schema design is complete.
